@@ -1,0 +1,5 @@
+SELECT a.*,ab.c sqlCount, avgTime 
+FROM 
+t
+;
+#LEFT JOIN (SELECT connecttime,SUM(t.sqlCount) sqlCount,IFNULL(FLOOR(SUM(t.sqlCount * t.avgTime) / SUM(t.sqlCount)),0) avgTime FROM (SELECT HOUR(t.tlog_time) connecttime,SUM(t.sql_throughput) sqlCount,IFNULL(FLOOR(SUM(t.avg_cost_ms * t.sql_throughput) / SUM(t.sql_throughput)),0) avgTime FROM summary_performance_hour t WHERE t.dbfw_inst_id = 1 AND t.tlog_time >= '2020-09-18 00:00:00' AND t.tlog_time < '2020-09-18 10:00:00' AND t.database_id IN ( 1,10,11,12,13,14,15,16,17,18,19,2,20,21,22,23,24,25,26,27,28,29,3,30,31,32,33,34,35,36,4,5,6,7,8,9 ) GROUP BY connecttime union all SELECT HOUR(t.tlog_time) connecttime,SUM(t.sql_throughput) sqlCount,IFNULL(FLOOR(SUM(t.avg_cost_ms * t.sql_throughput) / SUM(t.sql_throughput)),0) avgTime FROM summary_performance t WHERE t.dbfw_inst_id = 1 AND t.tlog_time >= '2020-09-18 10:00:00' AND t.tlog_time < '2020-09-18 11:33:17' AND t.database_id IN ( 1,10,11,12,13,14,15,16,17,18,19,2,20,21,22,23,24,25,26,27,28,29,3,30,31,32,33,34,35,36,4,5,6,7,8,9 ) GROUP BY connecttime) t GROUP BY t.connecttime) t1 ON t.connecttime=t1.connecttime; 

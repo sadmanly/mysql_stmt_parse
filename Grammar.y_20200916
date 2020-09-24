@@ -1,0 +1,868 @@
+%{
+#include <stdio.h>
+#include <string.h>
+#include "vector.h"
+#include "tree.h"
+int yylex();
+int yyerror();
+int yydebug = 1;
+extern FILE* yyin;
+int parse_getopt();
+
+typedef struct stmt
+{
+   int stmt_statment;
+   c_vector* obj;
+   c_vector* filed;
+   c_vector* pro;
+}stmt;
+
+typedef struct obj_info
+{
+    char* obj_name;
+}obj_info;
+
+typedef struct filed_info
+{
+    char* filed_name;
+    char* filed_table;
+}filed_info;
+
+stmt _stmt;
+void Delect_vector(stmt* _stmt);
+void Show_stmt_info(stmt* _stmt);
+void Init_s_vector(stmt* _stmt);
+Tree_Node* Create_new_node(int type,char* RHS);
+%}
+
+%union
+{
+    struct Tree_Node* node;
+    char* strval;
+}
+
+%left EQ AND OR IN NOT 
+%left '*' 
+
+%token SELECT DISTINCT HIGH_PRIORITY SQL_SMALL_RESULT SQL_BIG_RESULT SQL_BUFFER_RESULT SQL_NO_CACHE FROM PARTITION WHERE GROUP
+%token DISTINCTROW STRAIGHT_JOIN SQL_NO_CHACHE SQL_CALC_FOUND_ROWS
+%token BY HAVING WINDOW ORDER LIMIT FOR JOIN INNER CROSS ON USING LEFT RIGHT OUTER 
+%token NATURAL AND OR NOT EXISTS UNION 
+ /*声明token*/
+%token INSERT_OBJ
+%token INSERT UPDATE CREATE
+%token ID SET 
+%token EOL LF_bracket RF_bracket VALUES COMMA EQ   
+%token DATABASE ALL
+%token AS NAME
+%token ASC DESC INTO NUM WITH ROLLUP 
+%type<strval> NAME NUM EQ
+%type<node> SQLS SQL update_exp create_exp select_exp select_expr_stmt 
+%type<node> select_opts select_expr_list  
+%type<node> select_expr expr opt_as_alias
+%type<node> table_references table_reference 
+%type<node> table_factor join_table
+%type<node> table_subquery opt_join_condition join_condition
+%type<node> opt_left_or_right left_or_right opt_outer opt_inner_cross 
+%type<node> index_hint opt_where where_condition val_list opt_group_by
+%type<node> groupby_list opt_asc_desc opt_with_rollup opt_having opt_order_by end
+%type<node> opt_limit opt_into_list column_list key_value_exp id_comma_exp value_key_exp id2_comma_exp
+%start SQLS
+%%
+
+SQLS: {}
+    | SQL ';' 
+    {
+          Enum_tree_node_deep_R($1);
+          Delete_tree($1);
+   //     _stmt.stmt_statment = SELECT;
+   //     Show_stmt_info(&_stmt);
+    //    Delect_tree($1);
+          printf("归约成功!\n");
+    }
+    | SQLS ';' SQL ';' {}
+    ;
+
+SQL:  
+   insert_exp {printf("\tstat : insert\n");}
+   | update_exp  {printf("\tstat : update\n");}
+   | create_exp  {printf("\tstat : create\n");}
+   | select_exp  
+                {
+                    $$ = Create_new_node(1,"SELECT T 语句");
+                    $$->L_child = $1;
+                    $1->Parent = $$; 
+                }
+   ;
+
+select_exp:select_expr_stmt 
+          {
+                $$ = Create_new_node(1,"\nBEGIN");
+                $$->L_child = $1;
+                $1->Parent = $$; 
+          }
+          |select_exp UNION select_expr_stmt 
+          {
+                $$ = Create_new_node(1,"SELECT 语句 union");
+                $$->L_child = $1;
+                $1->Parent = $$; 
+                $1->R_child = $3;
+                $3->Parent = $1;
+          }
+          ;
+          
+select_expr_stmt:SELECT select_opts select_expr_list end 
+                {
+                    $$ = Create_new_node(2,"SELECT stmt NO FRROM");
+                    $4->R_child = $2;
+                    $2->Parent = $4;
+                    $2->R_child = $3;
+                    $3->Parent = $2;
+                    
+                    $$->L_child = $4;
+                    $4->Parent = $$;
+                } 
+          | SELECT select_opts select_expr_list FROM table_references opt_where opt_group_by opt_having opt_order_by opt_limit opt_into_list end 
+          {
+                $$ = Create_new_node(2,"SELECT stmt");
+                $12->R_child = $2;
+                $2->Parent = $12;
+
+                $2->R_child = $3;
+                $3->Parent = $2;
+                $3->R_child = $5; 
+                $5->Parent = $3;
+
+                $5->R_child = $6; 
+                $6->Parent = $5;
+
+                $6->R_child = $7; 
+                $7->Parent = $6;
+
+                $7->R_child = $8; 
+                $8->Parent = $7;
+
+                $8->R_child = $9; 
+                $9->Parent = $8;
+
+                $9->R_child = $10; 
+                ($10)->Parent = $9;
+
+                $10->R_child = $11; 
+                $11->Parent = $10;
+
+                $$->L_child = $12;
+                $12->Parent = $$;
+          }
+          ;
+
+   /*-- 处理select语句的选项部分，这里没有限制先后和出现的次数 --*/
+   /*-- select DISTINCTROW SQL_SAMLL_RESULT * from t1 --*/
+   /* SELECT select_opts select_expr_list FROM table_references opt_where opt_group_by opt_having opt_order_by opt_limit opt_into_list {printf("规约成功");} */
+
+end: 
+   {
+       $$ = Create_new_node(2,"END\n");
+   }
+   ;
+select_opts:  {
+                $$ = Create_new_node(1,"NULL");
+              } 
+          | select_opts ALL 
+          {
+                $$ = Create_new_node(1,"ALL");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts DISTINCT 
+          {
+                $$ = Create_new_node(1,"DISTINCT");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts DISTINCTROW 
+          {
+                $$ = Create_new_node(1,"DISTINCTROW");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts STRAIGHT_JOIN 
+          {
+                $$ = Create_new_node(1,"STRAIGHT_JOIN");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts SQL_SMALL_RESULT 
+          {
+                $$ = Create_new_node(1,"SQL_SMALL_RESULT");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts SQL_BIG_RESULT 
+          {
+                $$ = Create_new_node(1,"SQL_BIG_RESULT");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts SQL_BUFFER_RESULT 
+          {
+                $$ = Create_new_node(1,"SQL_BUFFER_RESULT");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts SQL_NO_CHACHE 
+          {
+                $$ = Create_new_node(1,"SQL_NO_CHACHE");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          | select_opts SQL_CALC_FOUND_ROWS 
+          {
+                $$ = Create_new_node(1,"SQL_CALC_FOUND_ROWS");
+                $$->L_child = $1;
+                $1->Parent = $$;
+          }
+          ;
+
+  /*-- 处理字段信息的列表 以‘,’为分界，有可能为*的情况 --*/
+  /*-- select * from t1 和 select a,b,c,d from t1 的情况  --*/
+
+select_expr_list: select_expr 
+                {
+                    $$ = Create_new_node(1,"字段信息");
+                    $$->L_child = $1;
+                    $1->Parent = $$;
+                }
+                | select_expr_list ',' select_expr 
+                {
+                    $$ = Create_new_node(1,"字段信息");
+                    $$->L_child = $1;
+                    $1->Parent = $$;
+                    $1->R_child = $3;
+                    $3->Parent = $1;
+                }
+                | '*'
+                {
+                    $$ = Create_new_node(1,"*");
+                }
+                ;
+ /*-- 处理字段信息总可能含有别名的情况 --*/
+ /*-- select a as liuyu,b as cui from t1 --*/ 
+ /*-- 这个expr里面可能是嵌套子查询的 --*/
+
+select_expr: expr opt_as_alias 
+           {
+              $$ = Create_new_node(1,"字段信息");
+              $$->L_child = $1;
+              $1->Parent = $$;
+              $1->R_child = $2;
+              $2->Parent = $1;
+           }
+           ;
+ /*-- 字段取别名的方法主要是 AS NAME 或者 直接 NAME 这 2 种情况 --*/
+ /*-- 给字段信息取别名的方法可以加AS 也可以不加AS 直接跟在名字后面--*/
+ /*-- select a liuyu, b cui from t1 --*/ 
+
+opt_as_alias: 
+            {
+                $$ = Create_new_node(2,"别名 NULL"); 
+            }
+            | AS NAME 
+            {
+                $$ = Create_new_node(2,$2); 
+                free($2);
+            }
+            | NAME 
+            {
+                $$ = Create_new_node(2,$1); 
+                free($1);
+            }
+            ;
+
+ /*-- 处理字段里面可能继续含有子查询的情况, 没有考虑子查询的限制，现在是粗略的认为子查询就是个信息select语句 --*/
+ /*-- select (select a from l1 where a=1) from l2 --*/
+ /*-- 当然查询字段信息可以直接是列名 --*/
+
+expr: '(' select_exp ')'
+    {
+        $$ = Create_new_node(2,"(字段信息里面的子查询)"); 
+        $$->L_child = $2;
+        $2->Parent = $$;
+    }
+    | NAME 
+    { 
+        $$ = Create_new_node(2,$1); 
+        free($1);
+    }
+    | NUM 
+    { 
+        $$ = Create_new_node(3,$1);
+        free($1);
+    }
+    ;
+
+ /*-- 左递归处理单表和多表的情况--*/
+ 
+table_references: table_reference 
+                {
+                   $$ = Create_new_node(1,"表信息");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                }
+                | table_references ',' table_reference
+                {
+                   $$ = Create_new_node(2,"表信息s");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $3;
+                   $3->Parent = $1;
+                } 
+                ;
+ /*
+ * 处理连接查询的问题
+ * >内连接 INNER JOIN (等值连接--包括重复列) (自然连接--等值连接除去重复列) (自连接,涉及到的表是同一个表的情况)
+ *   内连接只返回满足连接条件的数据行，外连接不只列出与连接条件相匹配的行，而是列出左表（左外连接时）、右表（右外连接时）
+ *   或两个表（全外连接时）中所有符合搜索条件的数据行。外连接分为左外连接、右外链接、全外连接三种。
+ * >外连接 RIGHT [OUTER] JOIN | FULL [OUTER] JOIN | LEFT [OUTER] JOIN
+ * >交叉连接 CROSS JOIN 两个表做笛卡尔积，得到的结果集的行数是两个表的行数的乘积
+ */
+ /*-- 单表情况的处理 分为join 和普通-*/
+table_reference: table_factor {
+                                $$ = Create_new_node(1,"普通表");
+                                $$->L_child = $1;
+                                $1->Parent = $$;
+                              //  Enum_tree_node_deep($$);
+                              //  printf("%s  %d\n",$$->RHS,$$->type);
+                              }
+               | join_table 
+               {
+                   $$ = Create_new_node(1,"JOIN表");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+               }
+               ;
+
+ /*-- 处理普通不含Join的表 --*/
+ /*-- select liuyu.a from l1 as liuyu 或者 select liuyu.a from liuyu.l1  刘宇是数据库名字 --*/
+ /*-- 这里可以包括子查询,子查询查完后的结果开始--*/
+ /*-- 这里甚至可以包括 前面的 table_references?????  不太理解 留坑--*/
+ /*-- 这里的索引不太理解## 留坑--*/
+
+table_factor: NAME opt_as_alias index_hint { 
+                                             $$ = Create_new_node(1,$1);
+                                             free($1);
+                                             $$->L_child = $2;
+                                             $2->Parent = $$;
+                                             $2->R_child = $3;
+                                             $3->Parent = $2;
+                                       //    printf("%s  %d\n",$$->RHS,$$->type);
+                                            }
+            | NAME '.' NAME opt_as_alias index_hint 
+            {
+                char con[200];
+                sprintf(con,"%s.%s",$1,$3);
+                free($1); free($3);
+                $$ = Create_new_node(1,con);
+                $$->L_child = $4;
+                $4->Parent = $$;
+                $4->R_child = $5;
+                $5->Parent = $4;
+            } 
+            | table_subquery opt_as_alias 
+            {
+                $$ = Create_new_node(1,"子查询的别名");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $2;
+                $2->Parent = $1;
+            }
+            | '(' table_references ')'
+            {
+                $$ = Create_new_node(1,"为(table_references)");
+                $$->L_child = $2;
+                $2->Parent = $$;
+            }
+            ;
+
+table_subquery: '(' select_exp ')' 
+              {
+                $$ = Create_new_node(1,"(子查询)");
+                $$->L_child = $2;
+                $2->Parent = $$;
+              }
+              ;
+
+ /*-- 处理含JOIN表的情况 --*/
+ /*-- join 留坑--*/
+ /*-- 为啥这里会有个递归呢?--*/
+join_table: table_reference opt_inner_cross JOIN table_factor opt_join_condition 
+          {
+                $$ = Create_new_node(1,"Join表的选项 JION");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $2;
+                $2->Parent = $1;
+                $2->R_child = $4;
+                $4->Parent = $2;
+                $4->R_child = $5;
+                $5->Parent = $4;
+          }
+          | table_reference STRAIGHT_JOIN table_factor 
+          {
+                $$ = Create_new_node(1,"Join表的选项 JION");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $3;
+                $3->Parent = $1;
+          }
+          | table_reference STRAIGHT_JOIN table_factor ON where_condition 
+          {
+                $$ = Create_new_node(1,"Join表的选项 STRIGHT_JOIN ON");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $3;
+                $3->Parent = $1;
+                $3->R_child = $5;
+                $5->Parent = $3;
+
+          }
+          | table_reference left_or_right opt_outer JOIN table_factor join_condition 
+          {
+                $$ = Create_new_node(1,"Join表的选项 4");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $2;
+                $2->Parent = $1;
+                $2->R_child = $3;
+                $3->Parent = $2;
+                $3->R_child = $5;
+                $5->Parent = $3;
+                $5->R_child = $6;
+                $6->Parent = $5;
+          }
+          | table_reference NATURAL opt_left_or_right JOIN table_factor 
+          {
+                $$ = Create_new_node(1,"Join表的选项 NATURAL");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $3;
+                $3->Parent = $1;
+                $3->R_child = $5;
+                $5->Parent = $3;
+          }
+          ;
+
+opt_left_or_right: LEFT opt_outer 
+                 {
+                    $$ = Create_new_node(LEFT,"LEFT");
+                    $$->L_child = $2;
+                    $2->Parent = $$;
+                 }
+                 | RIGHT opt_outer 
+                 {
+                    $$ = Create_new_node(RIGHT,"RIGHT");
+                    $$->L_child = $2;
+                    $2->Parent = $$;
+                 }
+                 |
+                 {
+                    $$ = Create_new_node(RIGHT,"NULL");
+                 }
+                 ;
+
+left_or_right: LEFT 
+             {
+               $$ = Create_new_node(LEFT,"LEFT");
+             }
+             | RIGHT 
+             {
+               $$ = Create_new_node(RIGHT,"RIGHT");
+             }
+             ;
+
+opt_outer: 
+         {
+            $$ = Create_new_node(1,"NULL");
+         }
+         | OUTER 
+         {
+            $$ = Create_new_node(1,"OUTER");
+         }
+         ;
+
+opt_inner_cross: 
+               {
+                  $$ = Create_new_node(1,"NULL");
+               }
+               | INNER 
+               {
+                  $$ = Create_new_node(1,"INNER");
+               }
+               | CROSS 
+               {
+                  $$ = Create_new_node(1,"CROSS");
+               } 
+               ;
+
+opt_join_condition: 
+                  {
+                    $$ = Create_new_node(1,"NULL");
+                  }
+                  | join_condition 
+                  {
+                    $$ = Create_new_node(1,"Join_condition");
+                    $$->L_child = $1;
+                    $1->Parent = $$;
+                  }
+                  ;
+
+join_condition: ON where_condition 
+              {
+                  $$ = Create_new_node(1,"ON");
+                  $$->L_child = $2;
+                  $2->Parent = $$;
+              }
+              | USING 
+              {
+                  $$ = Create_new_node(1,"USING");
+              }
+              ;
+
+
+ /*-- 处理索引的问题 留坑 --*/
+
+index_hint: 
+          {
+              $$ = Create_new_node(1,"index NULL");
+          }
+          ;
+
+opt_where: 
+         {
+            $$ = Create_new_node(1,"NO WHERE");
+         }
+         | WHERE where_condition 
+         {
+            $$ = Create_new_node(1,"WHERE");
+            $$->L_child = $2;
+            $2->Parent = $$;
+         }
+         ;
+
+ /*-- 条件表达式 --*/
+where_condition: 
+               {
+                   $$ = Create_new_node(1,"WHERE is NULL");
+               }
+               | where_condition EQ where_condition 
+               {
+                   $$ = Create_new_node(1,$2);
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $3;
+                   $3->Parent = $1;
+               }
+               | where_condition AND where_condition 
+               {
+                   $$ = Create_new_node(1,"AND");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $3;
+                   $3->Parent = $1;
+               }
+               | where_condition OR where_condition 
+               {
+                   $$ = Create_new_node(1,"OR");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $3;
+                   $3->Parent = $1;
+               }
+               | where_condition IN '(' select_exp ')' 
+               {
+                   $$ = Create_new_node(1,"IN (子查询)");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $4;
+                   $4->Parent = $1;
+               }
+               | where_condition NOT IN '(' select_exp ')' 
+               {
+                   $$ = Create_new_node(1,"NOT IN (子查询)");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $5;
+                   $5->Parent = $1;
+               }
+               | where_condition IN '(' val_list ')' 
+               {
+                   $$ = Create_new_node(1,"IN (val_list)");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $4;
+                   $4->Parent = $1;
+               }
+               | where_condition NOT IN '(' val_list ')' 
+               {
+                   $$ = Create_new_node(1,"NOT IN (val_list)");
+                   $$->L_child = $1;
+                   $1->Parent = $$;
+                   $1->R_child = $5;
+                   $5->Parent = $1;
+               }
+               | '(' where_condition ')' 
+               {
+                   $$ = Create_new_node(1,"条件");
+                   $$->L_child = $2;
+                   $2->Parent = $$;
+               }
+               | EXISTS '(' select_exp ')'
+               {
+                   $$ = Create_new_node(1,"EXISTS (子查询)");
+                   $$->L_child = $3;
+                   $3->Parent = $$;
+               }
+               | NAME 
+               {
+                   $$ = Create_new_node(NAME,$1);
+                   free($1);
+               }
+               | NUM 
+               {
+                   $$ = Create_new_node(NUM,$1);
+                   free($1);
+               }
+               | NAME '.' NAME 
+               {
+                   char con[200];
+                   sprintf(con,"%s.%s",$1,$3);
+                   free($1); free($3);
+                   $$ = Create_new_node(1,con);
+               }
+               ;
+
+val_list: where_condition 
+        {
+            $$ = Create_new_node(NUM,"条件");
+        }
+        | val_list ',' where_condition 
+        {
+            $$ = Create_new_node(NUM,"val");
+            $$->L_child = $1;
+            $1->Parent = $$;
+            $1->R_child = $3;
+            $3->Parent = $1;
+        }
+        ;
+
+
+ /* 这里简单的认为 groub_by 后面直接跟字段名字或者 子查询*/
+opt_group_by: 
+            {
+                $$ = Create_new_node(1,"opt_group_by NULL");
+            }
+            | GROUP BY groupby_list opt_with_rollup 
+            {
+                $$ = Create_new_node(NUM,"GROUP BY");
+                $$->L_child = $3;
+                $3->Parent = $$;
+                $3->R_child = $4;
+                $4->Parent = $3;
+            }
+            ;
+
+groupby_list: expr opt_asc_desc 
+            {
+                $$ = Create_new_node(NUM,"groupby_list");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $2;
+                $2->Parent = $1;
+            }
+            | groupby_list ',' expr opt_asc_desc 
+            {
+                $$ = Create_new_node(NUM,"groupby_lists");
+                $$->L_child = $1;
+                $1->Parent = $$;
+                $1->R_child = $3;
+                $3->Parent = $1;
+                $3->R_child = $4;
+                $4->Parent = $3;
+            }
+            ;
+
+opt_asc_desc: 
+            {
+               $$ = Create_new_node(1,"opt_asc_desc NULL");
+            }
+            | ASC 
+            {
+               $$ = Create_new_node(1,"ASC");
+            }
+            | DESC 
+            {
+               $$ = Create_new_node(1,"DESC");
+            }
+            ;
+
+opt_with_rollup: 
+              {
+                $$ = Create_new_node(1,"opt_with_rollup NULL");
+              }
+              | WITH ROLLUP 
+              {
+                $$ = Create_new_node(1,"WHIT ROLLUP");
+              }
+              ;
+
+opt_having:
+          {
+             $$ = Create_new_node(1,"opt_having NULL");
+          }
+          | HAVING where_condition 
+          {
+             $$ = Create_new_node(1,"HAVING");
+             $$->L_child = $2;
+             $2->Parent = $$;
+          }
+          ;
+
+opt_order_by: 
+            {
+                $$ = Create_new_node(1,"opt_order_by NULL");
+            }
+            | ORDER BY groupby_list 
+            {
+                $$ = Create_new_node(1,"ORDER BY");
+                $$->L_child = $3;
+                $3->Parent = $$;
+            }
+            ;
+ /*-- 这里简单认为 limit后面的是数字--*/
+opt_limit: 
+         {
+             $$ = Create_new_node(1,"opt_limit NULL");
+         }
+         | LIMIT NUM 
+         {
+            char con[100];
+            sprintf(con,"LIMIT %s",$2);
+            free($2);
+            $$ = Create_new_node(1,con);
+         } 
+         | LIMIT NUM ',' NUM 
+         {
+            char con[100];
+            sprintf(con,"LIMIT %s.%s",$2,$4);
+            free($2); free($4);
+            $$ = Create_new_node(1,con);
+         }
+         ;
+
+opt_into_list: 
+             {
+                $$ = Create_new_node(1,"opt_into_list NULL");
+             }
+             | INTO column_list 
+             {
+                $$ = Create_new_node(1,"INTO");
+                $$->L_child = $2;
+                $2->Parent = $$;
+             }
+             ;
+
+column_list:NAME 
+           {
+                $$ = Create_new_node(1,$1);
+                free($1);
+           }
+           | column_list ',' NAME 
+           {
+                $$ = Create_new_node(1,$3);
+                free($3);
+                $$->L_child = $1;
+                $1->Parent = $$;
+           }
+           ;
+
+create_exp: CREATE DATABASE ID {}
+          ;
+update_exp: UPDATE ID SET ID EQ ID WHERE ID EQ ID {}
+          ;
+
+insert_exp: INSERT INSERT_OBJ ID LF_bracket key_value_exp RF_bracket VALUES LF_bracket value_key_exp RF_bracket {} 
+          | INSERT INSERT_OBJ ID VALUES LF_bracket value_key_exp RF_bracket {}
+          ;
+
+key_value_exp: ID {}
+             | id_comma_exp ID {}
+             ;
+
+id_comma_exp: ID COMMA {}
+            | id_comma_exp ID COMMA {}
+            ;
+
+value_key_exp: ID {}
+             | id2_comma_exp ID {}
+             ; 
+
+id2_comma_exp: ID COMMA {}
+             | id2_comma_exp ID COMMA {}
+             ;
+
+
+%%
+
+int main(int argc, char ** argv)
+{
+   // printf(">");   
+    Init_s_vector(&_stmt);
+    parse_getopt(argc,argv);
+    yyin = fopen(argv[1],"r"); 
+    yyparse();
+    Delect_vector(&_stmt);
+    return 0;
+}
+ 
+void Show_stmt_info(stmt* _stmt)
+{
+    
+
+}
+
+void Delect_vector(stmt* _stmt)
+{
+    Del_vector(_stmt->obj);
+    Del_vector(_stmt->filed);
+    Del_vector(_stmt->pro);
+}
+
+void Init_s_vector(stmt* _stmt)
+{
+   _stmt->obj = Init_vector(10); 
+   _stmt->filed = Init_vector(10);
+   _stmt->pro = Init_vector(10);
+}
+
+Tree_Node* Create_new_node(int type,char* RHS)
+{
+    Tree_Node* tem = (Tree_Node*)malloc(sizeof(Tree_Node));
+    if(tem == NULL) 
+        return NULL;
+    tem->L_child = NULL;
+    tem->R_child = NULL;
+    tem->Parent = NULL;
+    tem->type = type;
+    memcpy(tem->RHS,RHS,strlen(RHS));
+    return tem;
+}
+
+int yyerror(char *s) 
+{
+    fprintf(stderr,"error:%s\n",s);
+    return -1;
+}
+int parse_getopt(int argc,char** argv)
+{
+    return 1;
+}
