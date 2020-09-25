@@ -9,6 +9,7 @@ extern int yyerror();
 int do_begin();
 int old_stat;
 %}
+
 %x NOTE_STAT 
 
 num [0-9]*
@@ -102,7 +103,7 @@ LIKE {return LIKE;}
 ">=" {yylval.strval = strdup(yytext);return EQ;}
 "<=" {yylval.strval = strdup(yytext);return EQ;}
 
-[ \t] {}  
+[ \t\r] {}  
 \n {}  
 .   { yyerror(" Mystery character=%s! ",yytext);}
 %%

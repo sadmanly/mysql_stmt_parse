@@ -1667,8 +1667,10 @@ void Show_the_filed_info(char* filed)
 int parse_getopt(int argc,char** argv)
 {
     int opt;
-
-    yyin = fopen(argv[argc-1],"r");
+    if(argc>=2)
+    {
+        yyin = fopen(argv[argc-1],"r");
+    }
     struct option opt_choose[] =
             {
                     {"getField",1,NULL,'g'},
