@@ -1,0 +1,31 @@
+SELECT 
+(
+CASE 
+WHEN exp.expression_type in (8,9) THEN 
+CONCAT
+(
+case WHEN exp.expression_type IN (0, 1) THEN 1
+WHEN exp.expression_type IN (8, 9) THEN 0
+ELSE exp.expression_type
+end,
+' SQL_RULE{\r\n',
+'ID{',
+'}\r\n',
+' BASELINE_ID{0}',
+'RULE_TYPE_CATEGORY{',
+main.rule_type,
+'}',
+exp.filter,
+'\r\n',
+exp.action,
+'\r\n',
+exp.routing,
+'}'
+)
+ELSE 'error' 
+END 
+) AS expression 
+FROM  
+rule_main main  
+WHERE  
+a=0;

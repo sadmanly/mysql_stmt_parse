@@ -1,7 +1,7 @@
 #select (case when a.c = 9 then 1 end) from b where (case when b.c = 9 then 3 end); 
 
 
-select ALL DISTINCT STRAIGHT_JOIN SQL_SMALL_RESULT (select * from b),a,c liuyu from b.a cui,c liuyu,d wudi;
+select t1.a,t.b,t.c liuyu from (select * from liuyu) t,table t1;
 
 
 
