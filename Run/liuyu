@@ -1,7 +1,9 @@
 #select (case when a.c = 9 then 1 end) from b where (case when b.c = 9 then 3 end); 
 
 #select b from (select * from t1) c;
-select t1.a,t.b,t.c liuyu from (select * from (select * from wudi)t2,liuyu,c) t,table t1;
+#select t1.a,t.b,t.c liuyu from (select * from (select * from wudi)t2,liuyu,c) t,table t1;
+select a,b from 
+c ;
 
 
 

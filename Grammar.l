@@ -105,7 +105,7 @@ LIKE {return LIKE;}
 
 [ \t\r] {}  
 \n {}  
-.   { yyerror(" Mystery character=%s! ",yytext);}
+.   { printf(" Mystery character= %hhd!",(char)yytext[0]);}
 %%
 
 int do_begin()

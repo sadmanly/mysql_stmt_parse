@@ -1397,7 +1397,7 @@ YY_RULE_SETUP
 case 75:
 YY_RULE_SETUP
 #line 108 "Grammar.l"
-{ yyerror(" Mystery character=%s! ",yytext);}
+{ printf(" Mystery character= %hhd!",(char)yytext[0]);}
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
