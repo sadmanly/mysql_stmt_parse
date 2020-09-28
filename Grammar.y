@@ -20,6 +20,9 @@ typedef struct Global
 {
     int mode;
     char* field_name;
+    char* table_alias_name;
+    char* database_name;
+    char* real_field_name;
 }Global;
 
 enum
@@ -57,6 +60,7 @@ typedef struct field_info
     Tree_Node* field_name;
     Tree_Node* field_alias;
     c_vector* field_table;
+    Tree_Node* field_table_info;
     Tree_Node* select_select;
 }field_info;
 
@@ -83,8 +87,22 @@ void Enum_get_opt_where_condition(Tree_Node* enum_man,select_info* select_con);
 void Enum_get_group_by(Tree_Node* enum_man,select_info* select_con);
 void Enum_get_having(Tree_Node* enum_man,select_info* select_con);
 void Enum_get_oder_by(Tree_Node* enum_man,select_info* select_con);
+
 void Show_stmt_info();
-void Show_the_filed_info(char* filed);
+void Show_the_filed_info();
+
+int Single_search_stmt(char* search);
+void All_table(select_info* tem_stmt);
+int Search_select_info_table(select_info* tem_stmt);
+/*
+*   将每一层抽象里面的表和字段的vector对应起来
+*/
+int Connect_field_table(select_info* tem_stmt);
+void Connect_enum_main();
+int Connect_field_table_child(select_info* tem_stmt,field_info* tem_field);
+//将字段信息切割 为 database table filed 的格式
+int Str_cut_for_real_alias(char* field_name,char** database_name,char** table_alias_name,char** real_field_name);
+
 %}
 
 %union
@@ -161,10 +179,13 @@ SQL:
 
                     if(_Global.mode == GET_MODE)
                     {
-                        Show_the_filed_info(_Global.field_name);
+                         Str_cut_for_real_alias(_Global.field_name,&_Global.database_name,&_Global.table_alias_name,&_Global.real_field_name);
+                         Connect_enum_main();
+                         Show_the_filed_info(_Global.field_name);
                     }
                     else if(_Global.mode == ALL_MODE)
                     {
+                        Connect_enum_main();
                         Show_stmt_info();
                     }
                    
@@ -172,7 +193,8 @@ SQL:
                     Del_select_info_vector();
                     Del_stmt_vector();
                     Init_stmt_vector();
-                    printf("|-----------------------------------------------------------------|\n");
+                    printf("\n");
+                    // printf("|-----------------------------------------------------------------|\n");
                 }
                 ;
 
@@ -975,7 +997,7 @@ where_condition: NAME '(' val_list ')'
                 //    char con[10000];
                 //   printf("%d ",strlen($1)+strlen($3->RHS)+30);
                    char* con = (char*)malloc(strlen($3->RHS)+strlen($1)+30); 
-                   sprintf(con,"函数 %s(%s)",$1,$3->RHS);
+                   sprintf(con,"%s(%s)",$1,$3->RHS);
                    $$ = Create_new_node($3->type,con);
                    free($1);
                    free(con);
@@ -1574,6 +1596,14 @@ void Show_stmt_info()
             field_info* tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
             if(tem_field->field_alias == NULL) c=1; 
             printf("%s ALIAS %s \t",(tem_field->field_name)->RHS,c?"NULL":tem_field->field_alias->RHS);
+            if(tem_field->field_table_info == NULL)
+            {
+                printf("属于该层所有表\t");
+            }
+            else
+            {
+                printf("属于 : %s \t ",tem_field->field_table_info->RHS);
+            }
         }
         if(tem_stmt->vector_field->curr_size !=0 ) printf("\n");
        
@@ -1611,66 +1641,265 @@ void Show_stmt_info()
 }
 
 
-
-void Show_the_filed_info(char* filed)
+void Show_the_filed_info()
 {
-    if(filed == NULL ) return;
-    int Flag = 0;
-    int i;
-    int j;
+    int             i,j,mode_tem,mode = 0,flag_null = 0,Flag = 0;
+    select_info*    tem_stmt;     //语句的存储结构 
+    field_info*     tem_field;    //字段信息的存储结构
+    obj_info*       tem_obj;      //表信息的存储结构 
+    char*           database_name_tem = NULL;
+    char*           table_alias_name_tem = NULL; 
+    char*           real_field_name_tem = NULL;
+
     for(i=0;i<_stmt.vector_stmt->curr_size;i++)
     {
-        select_info* tem_stmt = (select_info*)Vetor_get(_stmt.vector_stmt,i);
-        // if(tem_stmt->vector_field->curr_size !=0 ) printf("FIELD : ");
-        for(j=0;j<tem_stmt->vector_field->curr_size;j++)
+        tem_stmt = (select_info*)Vetor_get(_stmt.vector_stmt,i);
+        if(strcmp(tem_stmt->name,"MAIN") == 0)
         {
-            int c = 0;
-            field_info* tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
-            if(tem_field->field_alias == NULL) c=1; 
-           // printf("%s ALIAS %s \t",(tem_field->field_name)->RHS,c?"NULL":tem_field->field_alias->RHS);
-            // char* tem = strchar((tem_field->field_name)->RHS,".");
-            // if(tem==NULL) continue;
-            if(strcmp(filed,(tem_field->field_name)->RHS)==0 ||  (c==0 && strcmp(filed,tem_field->field_alias->RHS)==0))
+            for(j=0;j<tem_stmt->vector_field->curr_size;j++)
             {
-                Flag=1;
-            }
-
-        }
-
-
-        // printf("%d",tem_stmt->vector_table->curr_size);
-        if(Flag)
-        {
-            printf("%s \n",tem_stmt->name);
-            if(tem_stmt->vector_table->curr_size !=0 ) printf("TABLE : ");
-            for(j=0;j<tem_stmt->vector_table->curr_size;j++)
-            {
-                int c = 0;
-                obj_info* tem_obj = (obj_info*)Vetor_get(tem_stmt->vector_table,j);
-                if(tem_obj->obj_alias == NULL) c=1; 
-                printf("%s ALIAS %s \t",tem_obj->obj_name->RHS,c?"NULL":tem_obj->obj_alias->RHS);
-                if ((Tree_Node*)tem_obj->obj_condition != NULL)
+                tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
+                mode_tem = Str_cut_for_real_alias(tem_field->field_name->RHS,&database_name_tem,&table_alias_name_tem,&real_field_name_tem);
+                if(strcmp(real_field_name_tem,_Global.real_field_name) == 0 || strcmp(real_field_name_tem,"*") == 0)
                 {
-                    printf("---->条件 :  %s",((Tree_Node*)tem_obj->obj_condition)->RHS);
+                    if(tem_field->field_table_info == NULL)   //对应全部表
+                    {
+                        All_table(tem_stmt);
+                    }
+                    else     //对应该节点的表
+                    {
+                        if(tem_field->field_table_info->type == SELECT_SELECT)
+                        {
+                            Single_search_stmt(tem_field->field_table_info->RHS);
+                        }
+                        else
+                            printf("最终物理表 : %s \t",tem_field->field_table_info->RHS);
+                    }
+
                 }
+
             }
-            if(tem_stmt->vector_table->curr_size !=0 ) printf("\n");
-            Flag=0;
-            printf("\n\n");
         }
-       
+    }
+}
+
+/*
+* 查询 stmt 层的信息，语句层信息
+*/
+int Single_search_stmt(char* search)    //遇到select_select会调用该函数
+{
+    int             i;
+    select_info*    tem_stmt;
+    int             num_of_stmt = _stmt.vector_stmt->curr_size;    //这个是总的select数量
+
+    for(i=0;i<num_of_stmt;i++)
+    {
+        tem_stmt = (select_info*)Vetor_get(_stmt.vector_stmt,i);
+        if( 0 == strcmp(tem_stmt->name,search))
+        {
+            //找到子查询的所有信息，找到对应的表
+            Search_select_info_table(tem_stmt);   //找到这个表之后继续找对应的字段
+        }
+    }
+    return -1;
+}
+
+/*
+*  查询 select_info 层表信息    //通过全局变量里面的字段存储了所有信息，得到
+*/
+
+int Search_select_info_table(select_info* tem_stmt)
+{
+    int             i,Flag,mode_tem,flag_null = 0;
+    obj_info*       tem_obj;
+    field_info*     tem_field;  //找到字段对应的表，这里应该 _Global.field_name 里面存储了 字段信息
+    char*           database_name_tem = NULL;
+    char*           table_alias_name_tem = NULL;
+    char*           real_field_name_tem = NULL;  //存储输入的信息
+    
+    //找到该字段 或者 *  之后拿到 字段的别名的表  如果没有就把这一层所有的表输出
+
+    for(i=0;i<tem_stmt->vector_field->curr_size;i++)
+    {
+        tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,i);
+        mode_tem = Str_cut_for_real_alias(tem_field->field_name->RHS,&database_name_tem,&table_alias_name_tem,&real_field_name_tem);
+        if(strcmp(real_field_name_tem,_Global.real_field_name) == 0 || strcmp(real_field_name_tem,"*") == 0)
+        {
+            if(tem_field->field_table_info == NULL)   //对应全部表
+            {
+                All_table(tem_stmt);
+            }
+            else     //对应该节点的表
+            {
+                if(tem_field->field_table_info->type == SELECT_SELECT)
+                {
+                    Single_search_stmt(tem_field->field_table_info->RHS);
+                }
+                else
+                    printf("最终物理表 : %s \t",tem_field->field_table_info->RHS);
+            }
+        }
     }
 
+}
+
+void All_table(select_info* tem_stmt)
+{
+    int             i,Flag,mode_tem,flag_null = 0;
+    obj_info*       tem_obj;
+    field_info*     tem_field;  //找到字段对应的表，这里应该 _Global.field_name 里面存储了 字段信息
+
+    //找到该字段 或者 *  之后拿到 字段的别名的表  如果没有就把这一层所有的表输出
+
+    for(i=0;i<tem_stmt->vector_table->curr_size;i++)
+    {
+        tem_obj = (obj_info*)Vetor_get(tem_stmt->vector_table,i);               
+        if(tem_obj->obj_name->type == SELECT_SELECT)
+        {
+            Single_search_stmt(tem_obj->obj_name->RHS);
+        }
+        else
+            printf("最终物理表 : %s \t",tem_obj->obj_name->RHS);
+    }
+
+}
+
+
+
+void Connect_enum_main()
+{   
+    int             i=0;
+    select_info*    tem_stmt;
+
+    for(i = 0;i < _stmt.vector_stmt->curr_size; i++)
+    {
+        tem_stmt = Vetor_get(_stmt.vector_stmt,i);
+        Connect_field_table(tem_stmt);
+    }
+}
+
+int Connect_field_table(select_info* tem_stmt)
+{
+    int             i,size;
+    obj_info*       tem_obj;
+    field_info*     tem_field;
+
+    size = tem_stmt->vector_field->curr_size;
+    for(i = 0;i < size ; i++)
+    {
+        tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,i);
+        tem_field -> field_table = tem_stmt->vector_table;
+        Connect_field_table_child(tem_stmt,tem_field);
+    }
+    size = tem_stmt->vector_table->curr_size;
+    for(i = 0;i < size ; i++)
+    {
+        tem_obj = (obj_info*)Vetor_get(tem_stmt->vector_table,i);
+        tem_obj -> obj_field = tem_stmt->vector_field;
+    }
+    return 1;
+}
+
+int Connect_field_table_child(select_info* tem_stmt,field_info* tem_field)
+{
+    char*       database_name = NULL;
+    char*       table_alias_name = NULL;
+    char*       real_field_name = NULL;
+    int         mode,i = 0;
+    obj_info*   tem_obj;
+
+    mode = Str_cut_for_real_alias(tem_field->field_name->RHS,&database_name,&table_alias_name,&real_field_name);
+    
+    if(mode == 1)
+    {
+        tem_field->field_table_info = NULL;
+    }
+    else
+    {
+        for(i = 0; i<tem_stmt->vector_table->curr_size ;i++)
+        {
+            tem_obj = Vetor_get(tem_stmt->vector_table,i);
+            if(strcmp(tem_obj -> obj_alias ->RHS,table_alias_name) == 0)
+            {
+                tem_field->field_table_info = tem_obj->obj_name;
+            }
+        }
+    }
+}
+
+/*field_name 必须有空间  其他不要空间 传出参数 只需要传入一个指针 ，记得最后释放*/
+//返回的为 装的个数， a 返回 1  t.a  返回2  liuyu.t.c 返回3
+int Str_cut_for_real_alias(char* field_name,char** database_name_cpy,char** table_alias_name_cpy,char** real_field_name_cpy)
+{
+    char*       tem_ptr = NULL;
+    char*       tem_ptr_ptr = NULL;
+    char*       table_alias_name = NULL;
+    char*       database_name = NULL;
+    char*       real_field_name = NULL;
+
+
+    tem_ptr = strchr(field_name,'.');
+    if(tem_ptr != NULL)
+        tem_ptr_ptr = strchr(tem_ptr+1,'.');
+    if(tem_ptr == NULL)  //处理 a
+    {
+        real_field_name = (char*)calloc(strlen(field_name)+1,1);
+        memcpy(real_field_name,field_name,strlen(field_name)+1);
+        database_name = NULL;
+        table_alias_name = NULL;
+
+        *database_name_cpy = database_name;
+        *table_alias_name_cpy = table_alias_name;
+        *real_field_name_cpy = real_field_name;
+        return 1;
+    }
+    else if(tem_ptr != NULL && tem_ptr_ptr == NULL)  //处理 t.a
+    {
+        table_alias_name = (char*)malloc(tem_ptr-field_name+1);
+        memset(table_alias_name ,0,tem_ptr-field_name+1);
+        memcpy(table_alias_name,field_name,tem_ptr-field_name);
+        
+        database_name = NULL;
+
+        real_field_name = (char*)calloc(1,strlen(tem_ptr+1)+1);
+        memcpy(real_field_name,tem_ptr+1,strlen(tem_ptr+1));
+
+        *database_name_cpy = database_name;
+        *table_alias_name_cpy = table_alias_name;
+        *real_field_name_cpy = real_field_name;
+        return 2;
+    }
+    else if(tem_ptr != NULL && tem_ptr_ptr != NULL)  //处理 liuyu.t.a
+    {
+        database_name = (char*)calloc(tem_ptr-field_name+1,1);
+        memcpy(database_name,field_name,tem_ptr-field_name);
+
+        table_alias_name = (char*)calloc(tem_ptr_ptr - tem_ptr,1);
+        memcpy(table_alias_name,tem_ptr+1,tem_ptr_ptr - tem_ptr - 1);
+
+        real_field_name = (char*)calloc(strlen(tem_ptr_ptr+1)+1,1);
+        memcpy(real_field_name,tem_ptr_ptr + 1,strlen(tem_ptr_ptr + 1));
+
+        *database_name_cpy = database_name;
+        *table_alias_name_cpy = table_alias_name;
+        *real_field_name_cpy = real_field_name;
+        return 3;
+    }
+
+    // if(table_alias_name)
+    //     printf("Table : %s ",table_alias_name);
+    // if(database_name)
+    //     printf("Database : %s ",database_name);
+    // if(real_field_name)
+    //     printf("Field ： %s ",real_field_name);
 }
 
 
 int parse_getopt(int argc,char** argv)
 {
     int opt;
-    if(argc>=2)
-    {
-        yyin = fopen(argv[argc-1],"r");
-    }
+
+    yyin = fopen(argv[argc-1],"r");
     struct option opt_choose[] =
             {
                     {"getField",1,NULL,'g'},
