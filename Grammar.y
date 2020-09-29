@@ -23,6 +23,7 @@ typedef struct Global
     char* table_alias_name;
     char* database_name;
     char* real_field_name;
+    char* file_name;
 }Global;
 
 enum
@@ -70,6 +71,7 @@ typedef struct field_info
 int count;
 stmt _stmt;
 Global _Global;
+void usage();
 int parse_getopt(int argc,char** argv);
 void Init_stmt_vector();
 void Init_select_info_vector(select_info* select_con);
@@ -1674,11 +1676,11 @@ void Show_all_physical_table()
         for(j=0;j<tem_stmt->vector_field->curr_size;j++)
         {
             field_info* tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
-            printf("实际表字段  ：  %s     实际的物理表  ： ",(tem_field->field_name)->RHS);
+            printf("实际表字段  ：  %20s     实际的物理表  ： ",(tem_field->field_name)->RHS);
             for(k = 0;k<tem_field->field_physical_info->curr_size;k++)
             {
                 field_physical_info_tem = Vetor_get(tem_field->field_physical_info,k);
-                printf("%s  ",field_physical_info_tem->RHS);
+                printf("%30s ",field_physical_info_tem->RHS);
             }
             printf("\n");
         }
@@ -1687,9 +1689,6 @@ void Show_all_physical_table()
 
 }
 /*----------------------------------------------------------------------*/
-
-
-
 
 /*--------------------------查询一个字段实际的物理表----------------------------*/
 void Show_the_filed_info()
@@ -2008,7 +2007,6 @@ void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info
 }
 
 
-
 /*----------------------------------------------------------------------*/
 /*field_name 必须有空间  其他不要空间 传出参数 只需要传入一个指针 ，记得最后释放*/
 //返回的为 装的个数， a 返回 1  t.a  返回2  liuyu.t.c 返回3
@@ -2079,16 +2077,24 @@ int Str_cut_for_real_alias(char* field_name,char** database_name_cpy,char** tabl
 /*----------------------------------------------------------------------*/
 int parse_getopt(int argc,char** argv)
 {
-    int opt;
+    int opt = 0;
 
-    yyin = fopen(argv[argc-1],"r");
+    if(argc<2)
+    {
+        usage();
+        exit(0);
+    }
+
     struct option opt_choose[] =
             {
-                    {"getField",1,NULL,'g'},
+                    {"getinfo",1,NULL,'g'},
                     {"all",0,NULL,'a'},
                     {"physical_mode",0,NULL,'p'},
+                    {"file",1,NULL,'f'},
+
             };
-    while ((opt = getopt_long(argc,argv,"g:ap",opt_choose,NULL))!=-1)
+
+    while ((opt = getopt_long(argc,argv,"g:apf:",opt_choose,NULL))!=-1)
     {
         switch (opt)
         {
@@ -2102,11 +2108,34 @@ int parse_getopt(int argc,char** argv)
             case 'p':
                 _Global.mode = PHYSICAL_MODE;
                 break;
-            default:
+            case 'f':
                 _Global.mode = ALL_MODE;
-                //usage(optarg);
+                _Global.file_name = optarg;
+                break;
+            default:
+                usage();
+                exit(0);
                 break;
         }
     }
+
+    if(_Global.file_name == NULL)
+    {
+        usage();
+        exit(0);
+    }
+    else
+    {
+        yyin = fopen(_Global.file_name,"r");
+    }
+
     return;
+}
+
+void usage()
+{
+    printf("-f  <FILE>              --file       <FILE>                指定读入sql的文件名称\n");
+    printf("-p                      --physical                         查看所有的字段和其对应的物理表\n");
+    printf("-a                      --all                              将所有的语句分册显示，对应关系显示\n");
+    printf("-g  <FIELD>             --getinfo    <FIELD>               查找输入字段对应的物理表\n");
 }

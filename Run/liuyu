@@ -2,9 +2,7 @@
 
 #select b from (select * from t1) c;
 #select t1.a,t.b,t.c liuyu from (select * from (select * from wudi)t2,liuyu,c) t,table t1;
-select a,b from 
-c ;
-
+select a from (select * from (select b from c)t ,t2)t1;
 
 
 #SELECT @@CHARACTER_SET_DATABASE,@@COLLATION_DATABASE;/*Y*/;

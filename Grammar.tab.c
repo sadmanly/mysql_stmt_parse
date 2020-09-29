@@ -88,6 +88,7 @@ typedef struct Global
     char* table_alias_name;
     char* database_name;
     char* real_field_name;
+    char* file_name;
 }Global;
 
 enum
@@ -135,6 +136,7 @@ typedef struct field_info
 int count;
 stmt _stmt;
 Global _Global;
+void usage();
 int parse_getopt(int argc,char** argv);
 void Init_stmt_vector();
 void Init_select_info_vector(select_info* select_con);
@@ -175,7 +177,7 @@ void Subquery_get_info(char* search,char* real_field_name,field_info* save_field
 int Str_cut_for_real_alias(char* field_name,char** database_name,char** table_alias_name,char** real_field_name);
 void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info* save_field);
 
-#line 179 "Grammar.tab.c" /* yacc.c:339  */
+#line 181 "Grammar.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -285,12 +287,12 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 115 "Grammar.y" /* yacc.c:355  */
+#line 117 "Grammar.y" /* yacc.c:355  */
 
     struct Tree_Node* node;
     char* strval;
 
-#line 294 "Grammar.tab.c" /* yacc.c:355  */
+#line 296 "Grammar.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -307,7 +309,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 311 "Grammar.tab.c" /* yacc.c:358  */
+#line 313 "Grammar.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -611,19 +613,19 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   162,   162,   167,   176,   179,   180,   181,   182,   211,
-     217,   225,   235,   250,   301,   305,   308,   316,   324,   332,
-     340,   348,   356,   364,   372,   385,   391,   399,   408,   422,
-     427,   433,   441,   447,   460,   471,   486,   492,   510,   517,
-     531,   540,   551,   559,   565,   578,   589,   601,   609,   620,
-     634,   646,   652,   659,   664,   668,   675,   678,   685,   688,
-     692,   699,   702,   710,   719,   729,   735,   738,   747,   764,
-     782,   800,   816,   832,   848,   865,   876,   887,   903,   919,
-     928,   934,   939,   946,   951,   957,   966,   976,   986,   994,
-     998,  1005,  1019,  1025,  1042,  1051,  1054,  1075,  1089,  1110,
-    1113,  1117,  1124,  1127,  1134,  1137,  1146,  1149,  1158,  1161,
-    1168,  1178,  1181,  1189,  1194,  1203,  1205,  1208,  1209,  1212,
-    1213,  1216,  1217,  1220,  1221,  1224,  1225
+       0,   164,   164,   169,   178,   181,   182,   183,   184,   213,
+     219,   227,   237,   252,   303,   307,   310,   318,   326,   334,
+     342,   350,   358,   366,   374,   387,   393,   401,   410,   424,
+     429,   435,   443,   449,   462,   473,   488,   494,   512,   519,
+     533,   542,   553,   561,   567,   580,   591,   603,   611,   622,
+     636,   648,   654,   661,   666,   670,   677,   680,   687,   690,
+     694,   701,   704,   712,   721,   731,   737,   740,   749,   766,
+     784,   802,   818,   834,   850,   867,   878,   889,   905,   921,
+     930,   936,   941,   948,   953,   959,   968,   978,   988,   996,
+    1000,  1007,  1021,  1027,  1044,  1053,  1056,  1077,  1091,  1112,
+    1115,  1119,  1126,  1129,  1136,  1139,  1148,  1151,  1160,  1163,
+    1170,  1180,  1183,  1191,  1196,  1205,  1207,  1210,  1211,  1214,
+    1215,  1218,  1219,  1222,  1223,  1226,  1227
 };
 #endif
 
@@ -1587,52 +1589,52 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 163 "Grammar.y" /* yacc.c:1646  */
+#line 165 "Grammar.y" /* yacc.c:1646  */
     {
         // Delete_tree($1);
         // Del_select_info_vector();
     }
-#line 1596 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1598 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 168 "Grammar.y" /* yacc.c:1646  */
+#line 170 "Grammar.y" /* yacc.c:1646  */
     {
         // Delete_tree($2);
         // Del_select_info_vector();
         // printf("归约成功!\n");
     }
-#line 1606 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1608 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 176 "Grammar.y" /* yacc.c:1646  */
+#line 178 "Grammar.y" /* yacc.c:1646  */
     {
           (yyval.node) = Create_new_node(0,"SELECT T 语句");
    }
-#line 1614 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1616 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 179 "Grammar.y" /* yacc.c:1646  */
+#line 181 "Grammar.y" /* yacc.c:1646  */
     {printf("\tstat : insert\n");}
-#line 1620 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1622 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 180 "Grammar.y" /* yacc.c:1646  */
+#line 182 "Grammar.y" /* yacc.c:1646  */
     {printf("\tstat : update\n");}
-#line 1626 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1628 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 181 "Grammar.y" /* yacc.c:1646  */
+#line 183 "Grammar.y" /* yacc.c:1646  */
     {printf("\tstat : create\n");}
-#line 1632 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1634 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 183 "Grammar.y" /* yacc.c:1646  */
+#line 185 "Grammar.y" /* yacc.c:1646  */
     {
                     Main_struct((yyvsp[0].node),"MAIN");
 
@@ -1659,21 +1661,21 @@ yyreduce:
                     printf("\n");
                     // printf("|-----------------------------------------------------------------|\n");
                 }
-#line 1663 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1665 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 212 "Grammar.y" /* yacc.c:1646  */
+#line 214 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"\nBEGIN");
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node); 
           }
-#line 1673 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1675 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 218 "Grammar.y" /* yacc.c:1646  */
+#line 220 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"BEGIN 语句 union");
                 (yyval.node)->L_child = (yyvsp[-2].node);
@@ -1681,11 +1683,11 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 1685 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1687 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 226 "Grammar.y" /* yacc.c:1646  */
+#line 228 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"BEGIN 语句 union");
                 (yyval.node)->L_child = (yyvsp[-3].node);
@@ -1693,11 +1695,11 @@ yyreduce:
                 (yyvsp[-3].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-3].node);
           }
-#line 1697 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1699 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 236 "Grammar.y" /* yacc.c:1646  */
+#line 238 "Grammar.y" /* yacc.c:1646  */
     {
                     char con[500];
                     sprintf(con,"SELECT %s %s",
@@ -1712,11 +1714,11 @@ yyreduce:
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 1716 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1718 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 251 "Grammar.y" /* yacc.c:1646  */
+#line 253 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[500];
                 sprintf(con,"SELECT %s %s FROM %s %s %s %s %s %s %s",
@@ -1760,27 +1762,27 @@ yyreduce:
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
           }
-#line 1764 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1766 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 301 "Grammar.y" /* yacc.c:1646  */
+#line 303 "Grammar.y" /* yacc.c:1646  */
     {
        (yyval.node) = Create_new_node(END,"SELECT BEGIN : ");
    }
-#line 1772 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1774 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 305 "Grammar.y" /* yacc.c:1646  */
+#line 307 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
               }
-#line 1780 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1782 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 309 "Grammar.y" /* yacc.c:1646  */
+#line 311 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1788,11 +1790,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1792 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1794 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 317 "Grammar.y" /* yacc.c:1646  */
+#line 319 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1800,11 +1802,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1804 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1806 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 325 "Grammar.y" /* yacc.c:1646  */
+#line 327 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1812,11 +1814,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1816 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1818 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 333 "Grammar.y" /* yacc.c:1646  */
+#line 335 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1824,11 +1826,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1828 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1830 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 341 "Grammar.y" /* yacc.c:1646  */
+#line 343 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1836,11 +1838,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1840 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1842 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 349 "Grammar.y" /* yacc.c:1646  */
+#line 351 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt3");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1848,11 +1850,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1852 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1854 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 357 "Grammar.y" /* yacc.c:1646  */
+#line 359 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1860,11 +1862,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1864 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1866 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 365 "Grammar.y" /* yacc.c:1646  */
+#line 367 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1872,11 +1874,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1876 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1878 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 373 "Grammar.y" /* yacc.c:1646  */
+#line 375 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1884,21 +1886,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1888 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1890 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 386 "Grammar.y" /* yacc.c:1646  */
+#line 388 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_INFO_BEGIN,"field_info_begin");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 1898 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1900 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 392 "Grammar.y" /* yacc.c:1646  */
+#line 394 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_INFO_BEGIN,"field_info_begin");
                     (yyval.node)->L_child = (yyvsp[-2].node);
@@ -1906,19 +1908,19 @@ yyreduce:
                     (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 }
-#line 1910 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1912 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 400 "Grammar.y" /* yacc.c:1646  */
+#line 402 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_NAME,"*");
                 }
-#line 1918 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1920 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 409 "Grammar.y" /* yacc.c:1646  */
+#line 411 "Grammar.y" /* yacc.c:1646  */
     {
               (yyval.node) = Create_new_node(FIELD_NODE,"field");
               (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1926,47 +1928,47 @@ yyreduce:
               (yyvsp[-1].node)->R_child = (yyvsp[0].node);
               (yyvsp[0].node)->Parent = (yyvsp[-1].node);
            }
-#line 1930 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1932 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 423 "Grammar.y" /* yacc.c:1646  */
+#line 425 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,(yyvsp[0].strval)); 
                 free((yyvsp[0].strval));
             }
-#line 1939 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1941 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 428 "Grammar.y" /* yacc.c:1646  */
+#line 430 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,(yyvsp[0].strval)); 
                 free((yyvsp[0].strval));
             }
-#line 1948 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1950 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 433 "Grammar.y" /* yacc.c:1646  */
+#line 435 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,"NULL"); 
             }
-#line 1956 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1958 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 442 "Grammar.y" /* yacc.c:1646  */
+#line 444 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(2,(yyvsp[0].node)->RHS); 
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
              }
-#line 1966 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1968 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 448 "Grammar.y" /* yacc.c:1646  */
+#line 450 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-1].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                 sprintf(con,"%s %s",(yyvsp[-1].node)->RHS,(yyvsp[0].node)->RHS);
@@ -1977,11 +1979,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
              }
-#line 1981 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1983 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 461 "Grammar.y" /* yacc.c:1646  */
+#line 463 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+20);
                 sprintf(con,"WHEN　%s THEN %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -1992,11 +1994,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 free(con);
          }
-#line 1996 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1998 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 35:
-#line 472 "Grammar.y" /* yacc.c:1646  */
+#line 474 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[0].node)->RHS)+10);
                 sprintf(con,"ELSE %s",(yyvsp[0].node)->RHS);
@@ -2005,21 +2007,21 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyval.node);
                 free(con);
          }
-#line 2009 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2011 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 487 "Grammar.y" /* yacc.c:1646  */
+#line 489 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(TABLE_INFO,"表信息");
                    (yyval.node)->L_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 2019 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2021 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 493 "Grammar.y" /* yacc.c:1646  */
+#line 495 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(TABLE_INFO,"表信息");
                    (yyval.node)->L_child = (yyvsp[-2].node);
@@ -2027,11 +2029,11 @@ yyreduce:
                    (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 }
-#line 2031 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2033 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 510 "Grammar.y" /* yacc.c:1646  */
+#line 512 "Grammar.y" /* yacc.c:1646  */
     {
                                 (yyval.node) = Create_new_node(NORMAL_TABLE,"Normal table");
                                 (yyval.node)->L_child = (yyvsp[0].node);
@@ -2039,21 +2041,21 @@ yyreduce:
                               //  Enum_tree_node_deep($$);
                               //  printf("%s  %d\n",$$->RHS,$$->type);
                               }
-#line 2043 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2045 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 518 "Grammar.y" /* yacc.c:1646  */
+#line 520 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(JOIN_TABLE,"JOIN表");
                    (yyval.node)->L_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyval.node);
                }
-#line 2053 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2055 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 531 "Grammar.y" /* yacc.c:1646  */
+#line 533 "Grammar.y" /* yacc.c:1646  */
     { 
                                              (yyval.node) = Create_new_node(TABLE_NAME,(yyvsp[-2].strval));
                                              free((yyvsp[-2].strval));
@@ -2063,11 +2065,11 @@ yyreduce:
                                              (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                                         //   printf("%s  %d\n",$$->RHS,$$->type);
                                             }
-#line 2067 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2069 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 541 "Grammar.y" /* yacc.c:1646  */
+#line 543 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[200];
                 sprintf(con,"%s.%s",(yyvsp[-4].strval),(yyvsp[-2].strval));
@@ -2078,11 +2080,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2082 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2084 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 552 "Grammar.y" /* yacc.c:1646  */
+#line 554 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_SUB,"table_sub");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -2090,21 +2092,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2094 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2096 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 560 "Grammar.y" /* yacc.c:1646  */
+#line 562 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_REFERENCE,"为(table_references)");
                 (yyval.node)->L_child = (yyvsp[-1].node);
                 (yyvsp[-1].node)->Parent = (yyval.node);
             }
-#line 2104 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2106 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 566 "Grammar.y" /* yacc.c:1646  */
+#line 568 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_REFERENCE,"为(table_references)");
                 (yyval.node)->L_child = (yyvsp[-3].node);
@@ -2114,21 +2116,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2118 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2120 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 579 "Grammar.y" /* yacc.c:1646  */
+#line 581 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_SELECT,"(子查询");
                 (yyval.node)->L_child = (yyvsp[-1].node);
                 (yyvsp[-1].node)->Parent = (yyval.node);
               }
-#line 2128 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2130 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 590 "Grammar.y" /* yacc.c:1646  */
+#line 592 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_1,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2140,11 +2142,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 2144 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2146 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 602 "Grammar.y" /* yacc.c:1646  */
+#line 604 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_2,"Join表的选项 JION2");
                 (yyval.node)->L_child = (yyvsp[-2].node);
@@ -2152,11 +2154,11 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 2156 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2158 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 610 "Grammar.y" /* yacc.c:1646  */
+#line 612 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_3,"Join表的选项 STRIGHT_JOIN ON3");
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2167,11 +2169,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
 
           }
-#line 2171 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2173 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 621 "Grammar.y" /* yacc.c:1646  */
+#line 623 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_4,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[-5].node);
@@ -2185,11 +2187,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 2189 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2191 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 635 "Grammar.y" /* yacc.c:1646  */
+#line 637 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_5,"Join表的选项 NATURAL5");
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2199,113 +2201,113 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 2203 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2205 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 647 "Grammar.y" /* yacc.c:1646  */
+#line 649 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(LEFT,"LEFT");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                  }
-#line 2213 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2215 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 653 "Grammar.y" /* yacc.c:1646  */
+#line 655 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(RIGHT,"RIGHT");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                  }
-#line 2223 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2225 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 659 "Grammar.y" /* yacc.c:1646  */
+#line 661 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(RIGHT,"NULL");
                  }
-#line 2231 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2233 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 665 "Grammar.y" /* yacc.c:1646  */
+#line 667 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(LEFT,"LEFT");
              }
-#line 2239 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2241 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 669 "Grammar.y" /* yacc.c:1646  */
+#line 671 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(RIGHT,"RIGHT");
              }
-#line 2247 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2249 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 675 "Grammar.y" /* yacc.c:1646  */
+#line 677 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"NULL");
          }
-#line 2255 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2257 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 679 "Grammar.y" /* yacc.c:1646  */
+#line 681 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"OUTER");
          }
-#line 2263 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2265 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 685 "Grammar.y" /* yacc.c:1646  */
+#line 687 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"NULL");
                }
-#line 2271 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2273 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 689 "Grammar.y" /* yacc.c:1646  */
+#line 691 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"INNER");
                }
-#line 2279 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2281 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 693 "Grammar.y" /* yacc.c:1646  */
+#line 695 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"CROSS");
                }
-#line 2287 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2289 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 699 "Grammar.y" /* yacc.c:1646  */
+#line 701 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(1,"NULL");
                   }
-#line 2295 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2297 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 703 "Grammar.y" /* yacc.c:1646  */
+#line 705 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(JOIN_CONDITION,(yyvsp[0].node)->RHS);
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                   }
-#line 2305 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2307 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 711 "Grammar.y" /* yacc.c:1646  */
+#line 713 "Grammar.y" /* yacc.c:1646  */
     {
                   char* con = (char*)malloc(strlen((yyvsp[0].node)->RHS)+1);
                   sprintf(con,"ON %s",(yyvsp[0].node)->RHS);
@@ -2314,45 +2316,45 @@ yyreduce:
                   (yyvsp[0].node)->Parent = (yyval.node);
                   free(con);
               }
-#line 2318 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2320 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 720 "Grammar.y" /* yacc.c:1646  */
+#line 722 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(JOIN_CONDITION,"USING");
               }
-#line 2326 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2328 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 729 "Grammar.y" /* yacc.c:1646  */
+#line 731 "Grammar.y" /* yacc.c:1646  */
     {
               (yyval.node) = Create_new_node(1,"index NULL");
           }
-#line 2334 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2336 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 735 "Grammar.y" /* yacc.c:1646  */
+#line 737 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"NO WHERE");
          }
-#line 2342 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2344 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 739 "Grammar.y" /* yacc.c:1646  */
+#line 741 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(OPT_WHERE,(yyvsp[0].node)->RHS);
             (yyval.node)->L_child = (yyvsp[0].node);
             (yyvsp[0].node)->Parent = (yyval.node);
          }
-#line 2352 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2354 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 748 "Grammar.y" /* yacc.c:1646  */
+#line 750 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[-1].strval))+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s %s %s",(yyvsp[-2].node)->RHS,(yyvsp[-1].strval),(yyvsp[0].node)->RHS);
@@ -2369,11 +2371,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2373 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2375 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 765 "Grammar.y" /* yacc.c:1646  */
+#line 767 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s AND %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2391,11 +2393,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2395 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2397 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 783 "Grammar.y" /* yacc.c:1646  */
+#line 785 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s OR %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2413,11 +2415,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2417 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2419 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 801 "Grammar.y" /* yacc.c:1646  */
+#line 803 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s - %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2433,11 +2435,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2437 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2439 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 817 "Grammar.y" /* yacc.c:1646  */
+#line 819 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s + %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2453,11 +2455,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2457 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2459 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 833 "Grammar.y" /* yacc.c:1646  */
+#line 835 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s * %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2473,11 +2475,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2477 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2479 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 849 "Grammar.y" /* yacc.c:1646  */
+#line 851 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s / %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2494,11 +2496,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2498 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2500 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 866 "Grammar.y" /* yacc.c:1646  */
+#line 868 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-4].node)->RHS)+20);
                    sprintf(con,"%s IN (子查询",(yyvsp[-4].node)->RHS);
@@ -2509,11 +2511,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-4].node);
                    free(con);
                }
-#line 2513 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2515 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 877 "Grammar.y" /* yacc.c:1646  */
+#line 879 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-5].node)->RHS)+20);
                    sprintf(con,"%s NOT IN (子查询",(yyvsp[-5].node)->RHS);
@@ -2524,11 +2526,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-5].node);
                    free(con);
                }
-#line 2528 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2530 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 888 "Grammar.y" /* yacc.c:1646  */
+#line 890 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+strlen((yyvsp[-4].node)->RHS)+20);
                    sprintf(con,"%s IN (%s)",(yyvsp[-4].node)->RHS,(yyvsp[-1].node)->RHS);
@@ -2544,11 +2546,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-4].node);
                    free(con);
                }
-#line 2548 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2550 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 904 "Grammar.y" /* yacc.c:1646  */
+#line 906 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-5].node)->RHS)+strlen((yyvsp[-1].node)->RHS)+20);
                    sprintf(con,"%s NOT IN (%s)",(yyvsp[-5].node)->RHS,(yyvsp[-1].node)->RHS);
@@ -2564,11 +2566,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-5].node);
                    free(con);
                }
-#line 2568 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2570 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 920 "Grammar.y" /* yacc.c:1646  */
+#line 922 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+10);
                    sprintf(con,"( %s )",(yyvsp[-1].node)->RHS);
@@ -2577,60 +2579,60 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyval.node);
                    free(con);
                }
-#line 2581 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2583 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 929 "Grammar.y" /* yacc.c:1646  */
+#line 931 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SELECT_SELECT,"EXISTS (子查询");
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2591 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2593 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 935 "Grammar.y" /* yacc.c:1646  */
+#line 937 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                    free((yyvsp[0].strval));
                }
-#line 2600 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2602 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 82:
-#line 940 "Grammar.y" /* yacc.c:1646  */
+#line 942 "Grammar.y" /* yacc.c:1646  */
     {
                    char con[200];
                    sprintf(con,"%s.*",(yyvsp[-2].strval));
                    (yyval.node) = Create_new_node(1,con);
                    free((yyvsp[-2].strval));
                }
-#line 2611 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2613 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 947 "Grammar.y" /* yacc.c:1646  */
+#line 949 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                    free((yyvsp[0].strval));
                }
-#line 2620 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2622 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 952 "Grammar.y" /* yacc.c:1646  */
+#line 954 "Grammar.y" /* yacc.c:1646  */
     {
                    char con[200];
                    sprintf(con,"%s.%s",(yyvsp[-2].strval),(yyvsp[0].strval));
                    (yyval.node) = Create_new_node(1,con);
                }
-#line 2630 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2632 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 958 "Grammar.y" /* yacc.c:1646  */
+#line 960 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+10);
                    sprintf(con,"(CASE %s END)",(yyvsp[-1].node)->RHS);
@@ -2639,11 +2641,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyval.node);
                    free(con);
                }
-#line 2643 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2645 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 967 "Grammar.y" /* yacc.c:1646  */
+#line 969 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].strval))+10);
                    sprintf(con,"%s LIKE %s",(yyvsp[-2].node)->RHS,(yyvsp[0].strval));
@@ -2653,11 +2655,11 @@ yyreduce:
                    free(con);
                    free((yyvsp[0].strval));
                }
-#line 2657 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2659 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 977 "Grammar.y" /* yacc.c:1646  */
+#line 979 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-3].node)->RHS)+strlen((yyvsp[0].strval))+10);
                    sprintf(con,"%s NOT LIKE %s",(yyvsp[-3].node)->RHS,(yyvsp[0].strval));
@@ -2667,37 +2669,37 @@ yyreduce:
                    free(con);
                    free((yyvsp[0].strval));
                }
-#line 2671 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2673 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 88:
-#line 987 "Grammar.y" /* yacc.c:1646  */
+#line 989 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SELECT_SELECT,"(子查询"); 
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2681 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2683 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 89:
-#line 995 "Grammar.y" /* yacc.c:1646  */
+#line 997 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SYSTEM_CALL_VARIABLE,(yyvsp[0].strval)); 
                }
-#line 2689 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2691 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 90:
-#line 999 "Grammar.y" /* yacc.c:1646  */
+#line 1001 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(USER_CALL_VARIABLE,(yyvsp[0].strval)); 
                }
-#line 2697 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2699 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 91:
-#line 1006 "Grammar.y" /* yacc.c:1646  */
+#line 1008 "Grammar.y" /* yacc.c:1646  */
     {
                 //    char con[10000];
                 //   printf("%d ",strlen($1)+strlen($3->RHS)+30);
@@ -2709,21 +2711,21 @@ yyreduce:
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2713 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2715 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 92:
-#line 1020 "Grammar.y" /* yacc.c:1646  */
+#line 1022 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node((yyvsp[0].node)->type,(yyvsp[0].node)->RHS);
             (yyval.node)->L_child = (yyvsp[0].node);
             (yyvsp[0].node)->Parent = (yyval.node);
         }
-#line 2723 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2725 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 93:
-#line 1026 "Grammar.y" /* yacc.c:1646  */
+#line 1028 "Grammar.y" /* yacc.c:1646  */
     {
             
             char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10); 
@@ -2740,27 +2742,27 @@ yyreduce:
             (yyvsp[0].node)->Parent = (yyvsp[-2].node);
             free(con);
         }
-#line 2744 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2746 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 94:
-#line 1043 "Grammar.y" /* yacc.c:1646  */
+#line 1045 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"*");
         }
-#line 2752 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2754 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 95:
-#line 1051 "Grammar.y" /* yacc.c:1646  */
+#line 1053 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_group_by NULL");
             }
-#line 2760 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2762 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 96:
-#line 1055 "Grammar.y" /* yacc.c:1646  */
+#line 1057 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[500];
                 int c = ((yyvsp[0].node)->type == 0)?0:1;
@@ -2779,11 +2781,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2783 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2785 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 97:
-#line 1076 "Grammar.y" /* yacc.c:1646  */
+#line 1078 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-1].node)->RHS)+20);
                 int c = (yyvsp[0].node)->type;
@@ -2797,11 +2799,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
             }
-#line 2801 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2803 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 98:
-#line 1090 "Grammar.y" /* yacc.c:1646  */
+#line 1092 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-3].node)->RHS)+20+strlen((yyvsp[-1].node)->RHS));
                 int c = (yyvsp[0].node)->type;
@@ -2819,227 +2821,227 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
             }
-#line 2823 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2825 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 99:
-#line 1110 "Grammar.y" /* yacc.c:1646  */
+#line 1112 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(0,"opt_asc_desc NULL");
             }
-#line 2831 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2833 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 100:
-#line 1114 "Grammar.y" /* yacc.c:1646  */
+#line 1116 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(1,"ASC");
             }
-#line 2839 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2841 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 101:
-#line 1118 "Grammar.y" /* yacc.c:1646  */
+#line 1120 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(1,"DESC");
             }
-#line 2847 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2849 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 102:
-#line 1124 "Grammar.y" /* yacc.c:1646  */
+#line 1126 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_with_rollup NULL");
               }
-#line 2855 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2857 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 103:
-#line 1128 "Grammar.y" /* yacc.c:1646  */
+#line 1130 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"WHIT ROLLUP");
               }
-#line 2863 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2865 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 104:
-#line 1134 "Grammar.y" /* yacc.c:1646  */
+#line 1136 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(1,"opt_having NULL");
           }
-#line 2871 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2873 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 105:
-#line 1138 "Grammar.y" /* yacc.c:1646  */
+#line 1140 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(HAVING,(yyvsp[0].node)->RHS);
              (yyval.node)->L_child = (yyvsp[0].node);
              (yyvsp[0].node)->Parent = (yyval.node);
           }
-#line 2881 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2883 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 106:
-#line 1146 "Grammar.y" /* yacc.c:1646  */
+#line 1148 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_order_by NULL");
             }
-#line 2889 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2891 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 107:
-#line 1150 "Grammar.y" /* yacc.c:1646  */
+#line 1152 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ORDER,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
             }
-#line 2899 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2901 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 1158 "Grammar.y" /* yacc.c:1646  */
+#line 1160 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(1,"opt_limit NULL");
          }
-#line 2907 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2909 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 1162 "Grammar.y" /* yacc.c:1646  */
+#line 1164 "Grammar.y" /* yacc.c:1646  */
     {
             char con[100];
             sprintf(con,"LIMIT %s",(yyvsp[0].strval));
             free((yyvsp[0].strval));
             (yyval.node) = Create_new_node(1,con);
          }
-#line 2918 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2920 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 1169 "Grammar.y" /* yacc.c:1646  */
+#line 1171 "Grammar.y" /* yacc.c:1646  */
     {
             char con[100];
             sprintf(con,"LIMIT %s.%s",(yyvsp[-2].strval),(yyvsp[0].strval));
             free((yyvsp[-2].strval)); free((yyvsp[0].strval));
             (yyval.node) = Create_new_node(1,con);
          }
-#line 2929 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2931 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 1178 "Grammar.y" /* yacc.c:1646  */
+#line 1180 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"opt_into_list NULL");
              }
-#line 2937 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2939 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 1182 "Grammar.y" /* yacc.c:1646  */
+#line 1184 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"INTO");
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
              }
-#line 2947 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2949 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 1190 "Grammar.y" /* yacc.c:1646  */
+#line 1192 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                 free((yyvsp[0].strval));
            }
-#line 2956 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2958 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 1195 "Grammar.y" /* yacc.c:1646  */
+#line 1197 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                 free((yyvsp[0].strval));
                 (yyval.node)->L_child = (yyvsp[-2].node);
                 (yyvsp[-2].node)->Parent = (yyval.node);
            }
-#line 2967 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2969 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 1203 "Grammar.y" /* yacc.c:1646  */
+#line 1205 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2973 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2975 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 1205 "Grammar.y" /* yacc.c:1646  */
+#line 1207 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2979 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2981 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 1208 "Grammar.y" /* yacc.c:1646  */
+#line 1210 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2985 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2987 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 1209 "Grammar.y" /* yacc.c:1646  */
+#line 1211 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2991 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2993 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 1212 "Grammar.y" /* yacc.c:1646  */
+#line 1214 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2997 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2999 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 1213 "Grammar.y" /* yacc.c:1646  */
+#line 1215 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3003 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3005 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 1216 "Grammar.y" /* yacc.c:1646  */
+#line 1218 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3009 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3011 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 122:
-#line 1217 "Grammar.y" /* yacc.c:1646  */
+#line 1219 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3015 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3017 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 123:
-#line 1220 "Grammar.y" /* yacc.c:1646  */
+#line 1222 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3021 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3023 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 124:
-#line 1221 "Grammar.y" /* yacc.c:1646  */
+#line 1223 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3027 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3029 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 125:
-#line 1224 "Grammar.y" /* yacc.c:1646  */
+#line 1226 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3033 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3035 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 126:
-#line 1225 "Grammar.y" /* yacc.c:1646  */
+#line 1227 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3039 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3041 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 3043 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3045 "Grammar.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -3267,7 +3269,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1229 "Grammar.y" /* yacc.c:1906  */
+#line 1231 "Grammar.y" /* yacc.c:1906  */
 
 
 int yyerror(char* a , int state)
@@ -3716,11 +3718,11 @@ void Show_all_physical_table()
         for(j=0;j<tem_stmt->vector_field->curr_size;j++)
         {
             field_info* tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
-            printf("实际表字段  ：  %s     实际的物理表  ： ",(tem_field->field_name)->RHS);
+            printf("实际表字段  ：  %20s     实际的物理表  ： ",(tem_field->field_name)->RHS);
             for(k = 0;k<tem_field->field_physical_info->curr_size;k++)
             {
                 field_physical_info_tem = Vetor_get(tem_field->field_physical_info,k);
-                printf("%s  ",field_physical_info_tem->RHS);
+                printf("%30s ",field_physical_info_tem->RHS);
             }
             printf("\n");
         }
@@ -3729,9 +3731,6 @@ void Show_all_physical_table()
 
 }
 /*----------------------------------------------------------------------*/
-
-
-
 
 /*--------------------------查询一个字段实际的物理表----------------------------*/
 void Show_the_filed_info()
@@ -4050,7 +4049,6 @@ void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info
 }
 
 
-
 /*----------------------------------------------------------------------*/
 /*field_name 必须有空间  其他不要空间 传出参数 只需要传入一个指针 ，记得最后释放*/
 //返回的为 装的个数， a 返回 1  t.a  返回2  liuyu.t.c 返回3
@@ -4121,16 +4119,24 @@ int Str_cut_for_real_alias(char* field_name,char** database_name_cpy,char** tabl
 /*----------------------------------------------------------------------*/
 int parse_getopt(int argc,char** argv)
 {
-    int opt;
+    int opt = 0;
 
-    yyin = fopen(argv[argc-1],"r");
+    if(argc<2)
+    {
+        usage();
+        exit(0);
+    }
+
     struct option opt_choose[] =
             {
-                    {"getField",1,NULL,'g'},
+                    {"getinfo",1,NULL,'g'},
                     {"all",0,NULL,'a'},
                     {"physical_mode",0,NULL,'p'},
+                    {"file",1,NULL,'f'},
+
             };
-    while ((opt = getopt_long(argc,argv,"g:ap",opt_choose,NULL))!=-1)
+
+    while ((opt = getopt_long(argc,argv,"g:apf:",opt_choose,NULL))!=-1)
     {
         switch (opt)
         {
@@ -4144,11 +4150,34 @@ int parse_getopt(int argc,char** argv)
             case 'p':
                 _Global.mode = PHYSICAL_MODE;
                 break;
-            default:
+            case 'f':
                 _Global.mode = ALL_MODE;
-                //usage(optarg);
+                _Global.file_name = optarg;
+                break;
+            default:
+                usage();
+                exit(0);
                 break;
         }
     }
+
+    if(_Global.file_name == NULL)
+    {
+        usage();
+        exit(0);
+    }
+    else
+    {
+        yyin = fopen(_Global.file_name,"r");
+    }
+
     return;
+}
+
+void usage()
+{
+    printf("-f  <FILE>              --file       <FILE>                指定读入sql的文件名称\n");
+    printf("-p                      --physical                         查看所有的字段和其对应的物理表\n");
+    printf("-a                      --all                              将所有的语句分册显示，对应关系显示\n");
+    printf("-g  <FIELD>             --getinfo    <FIELD>               查找输入字段对应的物理表\n");
 }
