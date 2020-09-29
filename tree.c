@@ -29,7 +29,7 @@ void Delete_tree(Tree_Node* delete_man)
     Delete_tree(delete_man->R_child);
     Delete_tree(delete_man->L_child);
     free(delete_man->RHS);
-    delete_man->RHS=NULL;
+    delete_man->RHS = NULL;
     free(delete_man);
     delete_man = NULL;
 }

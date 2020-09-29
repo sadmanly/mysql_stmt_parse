@@ -2,8 +2,13 @@
 
 #select b from (select * from t1) c;
 #select t1.a,t.b,t.c liuyu from (select * from (select * from wudi)t2,liuyu,c) t,table t1;
-select a from (select * from (select b from c)t ,t2)t1;
+#select a from (select * from (select b from c)t ,t2)t1;
 
+select (select a from b) from b
+union
+select b from a 
+LEFT JOIN  t1 k 
+on t.database_id=t1.database_id and t.rule_type=t1.rule_type and t.rule_id=t1.rule_id;
 
 #SELECT @@CHARACTER_SET_DATABASE,@@COLLATION_DATABASE;/*Y*/;
 #SELECT QUERY_ID,SUM(DURATION)AS SUM_DURATION FROM INFORMATION_SCHEMA.PROFILING GROUP BY QUERY_ID;/*Y*/;

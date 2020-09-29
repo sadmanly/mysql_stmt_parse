@@ -2,6 +2,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include"Grammar.tab.h"
 #define CHARSIZE 500
 
 enum
@@ -42,6 +43,7 @@ typedef struct Tree_Node
 {
    char* RHS;
    int type;
+   struct  _String*    data;
    struct  Tree_Node*  Parent;
    struct  Tree_Node*  L_child;
    struct  Tree_Node*  R_child;

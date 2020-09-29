@@ -75,11 +75,21 @@ int yydebug = 1;
 int yylineno;
 extern FILE* yyin;
 
+#define STMT_MAX 1024*1024
+
 typedef struct stmt
 {
    int stmt_statment;
    c_vector* vector_stmt;
 }stmt;
+
+typedef struct chache_stmt
+{
+    u_int64_t   now_offset;
+    u_int64_t   size;   
+    char* chache;
+}chache_stmt;
+
 
 typedef struct Global
 {
@@ -89,20 +99,26 @@ typedef struct Global
     char* database_name;
     char* real_field_name;
     char* file_name;
+    
+    int count;
+    Tree_Node* root;                //语句序列的ROOT节点
+    chache_stmt* ptr_chache;
 }Global;
 
 enum
 {
     ALL_MODE,
     GET_MODE,
-    PHYSICAL_MODE
+    PHYSICAL_MODE,
+    TEST_MODE,
+    BACK_STMT
 };
 
 typedef struct select_info
 {
     char name[30];
-    c_vector* vector_field;     //field_info
-    c_vector* vector_opt;      //Node*
+    c_vector* vector_field;         //field_info
+    c_vector* vector_opt;           //Node*
     c_vector* vector_table;
     c_vector* vector_where;
     c_vector* vector_group_by;
@@ -113,12 +129,12 @@ typedef struct select_info
 
 typedef struct obj_info
 {
-    int type;               //用来标记是否为子查询
-    Tree_Node* obj_name;         //记录字段的名字
-    Tree_Node* obj_alias;        //记录字段的别名
-    Tree_Node* obj_condition;    //记录改字段的条件
-    c_vector* obj_field;    //指向同一个SELECT下面可能对应的字段信息
-    Tree_Node* select_select; //记录为子查询的节点
+    int type;                       //用来标记是否为子查询
+    Tree_Node* obj_name;            //记录字段的名字
+    Tree_Node* obj_alias;           //记录字段的别名
+    Tree_Node* obj_condition;       //记录改字段的条件
+    c_vector* obj_field;            //指向同一个SELECT下面可能对应的字段信息
+    Tree_Node* select_select;       //记录为子查询的节点（no use）
 }obj_info;
 
 typedef struct field_info
@@ -132,18 +148,24 @@ typedef struct field_info
     Tree_Node* select_select;
 }field_info;
 
-//全局变量的声明
-int count;
-stmt _stmt;
-Global _Global;
-void usage();
-int parse_getopt(int argc,char** argv);
+typedef struct _String
+{
+    u_int64_t   string_size;
+    char*       string_ptr;
+}_String;
+
+stmt _stmt;                                             //一条语句的所有信息
+Global _Global;                                         //全局使用变量的结构体
+void usage();                                           //提示怎么输入的提示函数
+int parse_getopt(int argc,char** argv);                 //命令行解析函数和
 void Init_stmt_vector();
 void Init_select_info_vector(select_info* select_con);
 void Del_stmt_vector();
 void Del_select_info_vector();
-void Main_struct(Tree_Node* enum_man,char* name);
 
+void Main_mode();
+
+void Main_struct(Tree_Node* enum_man,char* name);
 void Get_select_info(Tree_Node* enum_man,select_info* select_con);
 void Get_opt_info(Tree_Node* enum_man,select_info* select_con);
 void Get_field_info(Tree_Node* enum_man,select_info* select_con);
@@ -177,7 +199,16 @@ void Subquery_get_info(char* search,char* real_field_name,field_info* save_field
 int Str_cut_for_real_alias(char* field_name,char** database_name,char** table_alias_name,char** real_field_name);
 void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info* save_field);
 
-#line 181 "Grammar.tab.c" /* yacc.c:339  */
+void Get_back_stmt(stmt* back_stmt);
+void Find_main(stmt* back_stmt,c_vector* main_select_info);
+int Show_select_info(select_info* main_select,c_vector* union_stmt,stmt* back_stmt);
+char* Get_subquery_stmt(char* search,stmt* back_stmt);
+void Find_sub(stmt* back_stmt,c_vector* main_select_info,char* search);
+void Init_chache_stmt();
+int Insert_str(char* str);
+void Expend_chache();
+
+#line 212 "Grammar.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -252,33 +283,28 @@ extern int yydebug;
     NATURAL = 295,
     EXISTS = 296,
     UNION = 297,
-    INSERT_OBJ = 298,
-    INSERT = 299,
-    UPDATE = 300,
-    CREATE = 301,
-    ID = 302,
-    SET = 303,
-    EOL = 304,
-    LF_bracket = 305,
-    RF_bracket = 306,
-    VALUES = 307,
-    COMMA = 308,
-    DATABASE = 309,
-    AS = 310,
-    NAME = 311,
-    ASC = 312,
-    DESC = 313,
-    INTO = 314,
-    NUM = 315,
-    WITH = 316,
-    ROLLUP = 317,
-    CONCAT = 318,
-    CASE = 319,
-    THEN = 320,
-    WHEN = 321,
-    END = 322,
-    ELSE = 323,
-    FLOOR = 324
+    INSERT = 298,
+    UPDATE = 299,
+    CREATE = 300,
+    ID = 301,
+    SET = 302,
+    VALUES = 303,
+    DATABASE = 304,
+    AS = 305,
+    NAME = 306,
+    ASC = 307,
+    DESC = 308,
+    INTO = 309,
+    NUM = 310,
+    WITH = 311,
+    ROLLUP = 312,
+    CONCAT = 313,
+    CASE = 314,
+    THEN = 315,
+    WHEN = 316,
+    END = 317,
+    ELSE = 318,
+    FLOOR = 319
   };
 #endif
 
@@ -287,12 +313,12 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 117 "Grammar.y" /* yacc.c:355  */
+#line 148 "Grammar.y" /* yacc.c:355  */
 
     struct Tree_Node* node;
     char* strval;
 
-#line 296 "Grammar.tab.c" /* yacc.c:355  */
+#line 322 "Grammar.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -309,7 +335,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 313 "Grammar.tab.c" /* yacc.c:358  */
+#line 339 "Grammar.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -551,10 +577,10 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  16
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   357
+#define YYLAST   360
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  79
+#define YYNTOKENS  74
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  43
 /* YYNRULES -- Number of rules.  */
@@ -565,7 +591,7 @@ union yyalloc
 /* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
    by yylex, with out-of-bounds checking.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   324
+#define YYMAXUTOK   319
 
 #define YYTRANSLATE(YYX)                                                \
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
@@ -578,8 +604,8 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      77,    78,     9,    12,    76,    10,    13,    11,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,    75,
+      72,    73,     9,    12,    71,    10,    13,    11,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,    70,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -605,27 +631,26 @@ static const yytype_uint8 yytranslate[] =
       30,    31,    32,    33,    34,    35,    36,    37,    38,    39,
       40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
       50,    51,    52,    53,    54,    55,    56,    57,    58,    59,
-      60,    61,    62,    63,    64,    65,    66,    67,    68,    69,
-      70,    71,    72,    73,    74
+      60,    61,    62,    63,    64,    65,    66,    67,    68,    69
 };
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   164,   164,   169,   178,   181,   182,   183,   184,   213,
-     219,   227,   237,   252,   303,   307,   310,   318,   326,   334,
-     342,   350,   358,   366,   374,   387,   393,   401,   410,   424,
-     429,   435,   443,   449,   462,   473,   488,   494,   512,   519,
-     533,   542,   553,   561,   567,   580,   591,   603,   611,   622,
-     636,   648,   654,   661,   666,   670,   677,   680,   687,   690,
-     694,   701,   704,   712,   721,   731,   737,   740,   749,   766,
-     784,   802,   818,   834,   850,   867,   878,   889,   905,   921,
-     930,   936,   941,   948,   953,   959,   968,   978,   988,   996,
-    1000,  1007,  1021,  1027,  1044,  1053,  1056,  1077,  1091,  1112,
-    1115,  1119,  1126,  1129,  1136,  1139,  1148,  1151,  1160,  1163,
-    1170,  1180,  1183,  1191,  1196,  1205,  1207,  1210,  1211,  1214,
-    1215,  1218,  1219,  1222,  1223,  1226,  1227
+       0,   194,   194,   199,   207,   210,   215,   219,   223,   231,
+     237,   245,   255,   270,   321,   325,   328,   336,   344,   352,
+     360,   368,   376,   384,   392,   405,   411,   419,   428,   442,
+     447,   453,   461,   467,   480,   491,   506,   512,   530,   537,
+     551,   560,   571,   579,   585,   598,   609,   621,   629,   640,
+     654,   666,   672,   679,   684,   688,   695,   698,   705,   708,
+     712,   719,   722,   730,   739,   749,   755,   758,   767,   784,
+     802,   820,   836,   852,   868,   885,   896,   907,   923,   939,
+     948,   954,   959,   966,   971,   977,   986,   996,  1006,  1014,
+    1018,  1025,  1039,  1045,  1062,  1071,  1074,  1095,  1109,  1130,
+    1133,  1137,  1144,  1147,  1154,  1157,  1166,  1169,  1178,  1181,
+    1188,  1198,  1201,  1209,  1214,  1223,  1225,  1228,  1232,  1238,
+    1239,  1242,  1243,  1246,  1247,  1250,  1251
 };
 #endif
 
@@ -641,17 +666,16 @@ static const char *const yytname[] =
   "SYSTEM_CALL_VARIABLE", "USER_CALL_VARIABLE", "SELECT", "HIGH_PRIORITY",
   "FROM", "PARTITION", "WHERE", "GROUP", "BY", "HAVING", "WINDOW", "ORDER",
   "LIMIT", "FOR", "JOIN", "INNER", "CROSS", "ON", "USING", "LEFT", "RIGHT",
-  "OUTER", "NATURAL", "EXISTS", "UNION", "INSERT_OBJ", "INSERT", "UPDATE",
-  "CREATE", "ID", "SET", "EOL", "LF_bracket", "RF_bracket", "VALUES",
-  "COMMA", "DATABASE", "AS", "NAME", "ASC", "DESC", "INTO", "NUM", "WITH",
-  "ROLLUP", "CONCAT", "CASE", "THEN", "WHEN", "END", "ELSE", "FLOOR",
-  "';'", "','", "'('", "')'", "$accept", "SQLS", "SQL", "select_exp",
-  "select_expr_stmt", "end", "select_opts", "select_expr_list",
-  "select_expr", "opt_as_alias", "case_when_fun", "when_then",
-  "table_references", "table_reference", "table_factor", "table_subquery",
-  "join_table", "opt_left_or_right", "left_or_right", "opt_outer",
-  "opt_inner_cross", "opt_join_condition", "join_condition", "index_hint",
-  "opt_where", "where_condition", "val_list", "opt_group_by",
+  "OUTER", "NATURAL", "EXISTS", "UNION", "INSERT", "UPDATE", "CREATE",
+  "ID", "SET", "VALUES", "DATABASE", "AS", "NAME", "ASC", "DESC", "INTO",
+  "NUM", "WITH", "ROLLUP", "CONCAT", "CASE", "THEN", "WHEN", "END", "ELSE",
+  "FLOOR", "';'", "','", "'('", "')'", "$accept", "SQLS", "SQL",
+  "select_exp", "select_expr_stmt", "end", "select_opts",
+  "select_expr_list", "select_expr", "opt_as_alias", "case_when_fun",
+  "when_then", "table_references", "table_reference", "table_factor",
+  "table_subquery", "join_table", "opt_left_or_right", "left_or_right",
+  "opt_outer", "opt_inner_cross", "opt_join_condition", "join_condition",
+  "index_hint", "opt_where", "where_condition", "val_list", "opt_group_by",
   "groupby_list", "opt_asc_desc", "opt_with_rollup", "opt_having",
   "opt_order_by", "opt_limit", "opt_into_list", "column_list",
   "create_exp", "update_exp", "insert_exp", "key_value_exp",
@@ -671,14 +695,14 @@ static const yytype_uint16 yytoknum[] =
      290,   291,   292,   293,   294,   295,   296,   297,   298,   299,
      300,   301,   302,   303,   304,   305,   306,   307,   308,   309,
      310,   311,   312,   313,   314,   315,   316,   317,   318,   319,
-     320,   321,   322,   323,   324,    59,    44,    40,    41
+      59,    44,    40,    41
 };
 # endif
 
-#define YYPACT_NINF -166
+#define YYPACT_NINF -170
 
 #define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-166)))
+  (!!((Yystate) == (-170)))
 
 #define YYTABLE_NINF -89
 
@@ -689,30 +713,30 @@ static const yytype_uint16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-     131,  -166,   -35,   -17,   -20,   149,   -30,    18,  -166,  -166,
-    -166,  -166,   107,    17,    19,    23,  -166,    42,  -166,    95,
-    -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,
-    -166,  -166,    73,    -9,  -166,    37,   114,   -25,  -166,   285,
-      88,    82,  -166,  -166,   129,  -166,   129,    -2,    90,   252,
-     252,   130,  -166,   -38,    22,    71,   252,  -166,   252,   252,
-     252,    85,   155,   104,   252,   252,   252,   252,   105,  -166,
-    -166,   117,   122,   186,  -166,   -28,  -166,  -166,  -166,   327,
-     161,   204,   327,  -166,  -166,  -166,  -166,    10,   238,   -15,
-     263,  -166,   -43,  -166,  -166,   176,   176,   176,    -3,   101,
-     134,  -166,  -166,  -166,  -166,  -166,  -166,   132,   136,   144,
-     153,   168,  -166,   252,  -166,   252,   160,  -166,   180,   238,
-      -5,   175,    74,   252,    71,   196,    71,  -166,  -166,  -166,
-    -166,    98,   194,   205,  -166,    40,   188,    -3,  -166,  -166,
-     190,   185,   197,   192,   202,   230,   327,   327,   -43,  -166,
-      -1,    55,    86,  -166,  -166,   -43,   327,   263,   229,   233,
-     232,   194,   194,   236,  -166,   240,    71,  -166,  -166,    57,
-     193,   215,  -166,  -166,  -166,   220,   227,  -166,   207,   344,
-     207,  -166,   252,   252,   247,   252,  -166,  -166,    71,    71,
-     106,  -166,  -166,   153,  -166,   279,  -166,  -166,   224,    39,
-     327,   273,   274,   327,  -166,   106,   252,  -166,  -166,  -166,
-     254,   259,  -166,  -166,  -166,   245,   252,  -166,   252,   249,
-     255,  -166,   327,  -166,  -166,  -166,   224,   242,   244,   261,
-    -166,  -166,   251,  -166,   248,  -166,  -166,   262,  -166
+      49,  -170,   -50,   -40,    12,    10,    -1,   -26,  -170,  -170,
+    -170,  -170,   136,   -14,    35,    37,  -170,    43,  -170,    -3,
+    -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,
+    -170,  -170,    33,   -11,  -170,    75,   267,   -21,  -170,   274,
+      18,    90,  -170,  -170,   124,  -170,   124,    -5,   156,   278,
+     278,   100,  -170,   -34,    22,   -49,   278,  -170,   278,   278,
+     278,    58,    96,   113,   278,   278,   278,   278,   135,  -170,
+    -170,    89,   142,   181,  -170,   -33,  -170,  -170,  -170,   300,
+     101,   128,   300,  -170,  -170,  -170,  -170,    36,   272,    -9,
+     208,  -170,    17,  -170,  -170,   106,   106,   106,   139,   133,
+     151,  -170,  -170,  -170,  -170,  -170,  -170,   153,   143,   140,
+     159,   161,  -170,   278,  -170,   278,   162,  -170,   184,   272,
+     -30,   104,    74,   278,   -49,   189,   -49,  -170,  -170,  -170,
+    -170,    66,   180,   196,  -170,   -28,   105,   139,  -170,   163,
+     164,   185,  -170,   190,   171,   215,   300,   300,    17,  -170,
+       9,    21,   117,  -170,  -170,    17,   300,   208,   221,   222,
+     218,   180,   180,   223,  -170,   224,   -49,  -170,  -170,    23,
+     110,  -170,  -170,   188,   191,  -170,   206,  -170,   193,   348,
+     193,  -170,   278,   278,   231,   278,  -170,  -170,   -49,   -49,
+     146,  -170,  -170,  -170,   153,   284,  -170,  -170,   264,    39,
+     300,   257,   254,   300,  -170,   146,   278,  -170,  -170,  -170,
+     220,   238,  -170,  -170,  -170,   236,   278,  -170,   278,   239,
+     241,  -170,   300,  -170,  -170,  -170,   264,   243,   244,   260,
+    -170,  -170,   259,  -170,   246,  -170,  -170,   269,  -170
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -730,16 +754,16 @@ static const yytype_uint8 yydefact[] =
       28,     0,     0,     0,    11,     0,    82,    84,    94,    92,
        0,     0,    35,    85,    33,    88,    79,    31,     0,    66,
       36,    38,    31,    39,    26,    68,    69,    70,     0,     0,
-       0,    86,    73,    71,    74,    72,    29,   119,     0,     0,
+       0,    86,    73,    71,    74,    72,    29,     0,   119,     0,
        0,     0,    80,     0,    91,     0,     0,    65,    81,     0,
        0,     0,     0,     0,     0,    95,     0,    59,    60,    54,
-      55,    53,    56,     0,    42,     0,     0,     0,    87,   121,
-       0,   120,   123,     0,     0,     0,    93,    34,    31,    40,
+      55,    53,    56,     0,    42,     0,     0,     0,    87,   123,
+       0,     0,   121,     0,   120,     0,    93,    34,    31,    40,
        0,     0,     0,    45,    43,    31,    67,    37,     0,   104,
       47,    56,    56,     0,    57,     0,     0,    75,    77,     0,
-       0,     0,   122,   125,   118,   124,     0,    65,    84,    45,
+       0,   125,   118,   124,     0,   122,     0,    65,    84,    45,
       79,    65,     0,     0,   106,     0,    51,    52,     0,     0,
-      61,    76,    78,     0,   126,     0,    41,    44,    99,   102,
+      61,    76,    78,   126,     0,     0,    41,    44,    99,   102,
      105,     0,   108,    48,    50,     0,     0,    64,    46,    62,
        0,     0,   100,   101,    97,     0,     0,    96,     0,     0,
      111,    49,    63,   117,   116,   103,    99,   107,   109,     0,
@@ -749,11 +773,11 @@ static const yytype_uint8 yydefact[] =
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -166,  -166,   320,   -31,    -8,    96,  -166,  -166,   271,   -36,
-    -166,   277,   286,   216,  -125,  -166,  -166,  -166,  -166,    -4,
-    -166,  -166,   137,  -165,  -166,   -12,   -88,  -166,   125,   118,
-    -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,  -166,
-    -166,   164,  -166
+    -170,  -170,   315,   -31,    70,   103,  -170,  -170,   270,   -36,
+    -170,   286,   280,   216,  -125,  -170,  -170,  -170,  -170,    27,
+    -170,  -170,   138,  -169,  -170,   -12,   -62,  -170,   123,   119,
+    -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,  -170,
+    -170,   152,  -170
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
@@ -762,8 +786,8 @@ static const yytype_int16 yydefgoto[] =
       -1,     5,     6,     7,     8,    57,    12,    37,    38,   117,
       51,    52,   121,    90,    91,    92,    93,   163,   132,   165,
      133,   208,   209,   149,   125,    79,    80,   159,   199,   214,
-     217,   184,   202,   220,   230,   234,     9,    10,    11,   108,
-     109,   143,   144
+     217,   184,   202,   220,   230,   234,     9,    10,    11,   109,
+     110,   140,   141
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -771,130 +795,132 @@ static const yytype_int16 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int16 yytable[] =
 {
-      39,   160,    55,    70,    47,    53,    78,    76,    76,    19,
-     136,    45,   196,    13,   123,    75,   197,    68,    69,    19,
-      30,    31,     1,   116,    54,    58,    59,    60,    61,    62,
-      63,    64,    65,    66,    67,    14,    74,    81,    82,    15,
-      85,   190,    19,    32,    39,    18,    95,    96,    97,   170,
-     112,    56,   102,   103,   104,   105,   134,   120,    33,    77,
-     178,   124,    34,   204,   205,    19,    35,   135,    48,    40,
-      68,    69,    41,   153,    36,    42,   122,    58,    59,    60,
-      61,    62,    63,    64,    65,    66,    67,    19,   151,    58,
-      59,    60,    61,    62,    63,    64,    65,    66,    67,    78,
-      86,   146,    19,   147,    19,   215,   169,   152,    49,    44,
-      50,   156,   177,    30,    31,   216,    20,    43,   167,   181,
-       1,    21,    22,    23,    24,    25,    26,    27,    28,    29,
-      30,    31,    87,   179,    73,   191,    32,    30,    31,     1,
-     161,   162,   177,    71,   181,    72,   206,   207,    88,    16,
-      46,    33,   155,    32,     1,    34,     1,   186,   187,    35,
-      32,    99,    98,   100,   180,   101,   106,    36,    33,   107,
-     198,   200,    34,   203,     1,    33,    35,   110,   137,    34,
-       2,     3,     4,    35,    36,    64,    65,    66,    67,   111,
-     139,    36,   140,   150,   222,   138,   141,   -31,     2,     3,
-       4,    49,    83,    50,   226,   142,   198,    58,    59,    60,
-      61,    62,    63,    64,    65,    66,    67,   -31,   -31,   -31,
-     145,   148,   -31,   -31,   -31,   -31,   158,    58,    59,    60,
-      61,    62,    63,    64,    65,    66,    67,   113,   164,   114,
-      68,    69,   166,   172,   -31,   -31,   -31,   171,   174,   -31,
-     -31,   124,   -31,   154,   175,   173,   -31,    48,   -31,   176,
-     182,    30,    31,     1,   113,   183,   168,    68,    69,   113,
-     193,   192,   185,   188,   115,    30,    31,   189,   194,   195,
-     126,   201,   211,   -31,    32,   -31,   212,   213,    58,    59,
-      60,    61,    62,    63,    64,    65,    66,    67,    32,   118,
-     -58,   127,   128,    34,   218,   129,   130,    35,   131,   219,
-     223,   224,   225,    33,   228,   119,   236,    34,   216,   229,
-     232,    35,   233,   238,   237,    17,   235,    94,    84,    36,
+      39,   160,    47,    70,    76,    53,    55,    87,   196,    13,
+      16,    44,   197,    19,    19,    75,    14,    19,    76,    19,
+     123,    19,     1,    88,    54,    58,    59,    60,    61,    62,
+      63,    64,    65,    66,    67,     1,   136,    81,    82,    85,
+     112,   190,    40,   153,    39,   167,    95,    96,    97,   116,
+      56,    77,   102,   103,   104,   105,   134,   120,     2,     3,
+       4,    48,   124,   204,   205,   178,    15,   135,    19,    18,
+      19,    71,    68,    69,     1,   170,   122,    58,    59,    60,
+      61,    62,    63,    64,    65,    66,    67,    41,   151,    45,
+      72,    68,    69,    42,   179,    86,   191,     2,     3,     4,
+     215,   146,    99,   147,   100,    46,   169,   152,   161,   162,
+     216,   156,   177,    43,    74,    64,    65,    66,    67,   181,
       58,    59,    60,    61,    62,    63,    64,    65,    66,    67,
-     157,    89,   221,   227,   231,    68,    69,   -88,   -88,   -88,
-     -88,   -88,   -88,   -88,   -88,   -88,   -88,   210
+      98,    58,    59,    60,    61,    62,    63,    64,    65,    66,
+      67,    49,   177,    50,   181,    20,    73,   155,    78,     1,
+      21,    22,    23,    24,    25,    26,    27,    28,    29,    30,
+      31,   107,    30,    31,     1,    78,    49,    83,    50,   101,
+     198,   200,   113,   203,   114,   124,   113,   154,   168,    30,
+      31,   113,    32,   192,   111,    32,   206,   207,   186,   187,
+     180,   106,    33,   115,   222,    33,    34,   150,   108,    34,
+      35,   -31,    32,    35,   226,   137,   198,   138,    36,   139,
+     -31,    36,    33,   143,   142,   144,    34,   145,   148,   158,
+      35,   -31,   -31,   -31,   164,   126,   -31,   -31,    36,   -31,
+     -31,   -31,   -31,   166,   171,   -31,   -31,   172,   -31,    68,
+      69,   173,   175,   174,   176,   -58,   127,   128,    68,    69,
+     129,   130,   182,   131,   183,   -31,    48,   -31,   185,   193,
+     188,   189,   195,   194,   -31,   201,   -31,    58,    59,    60,
+      61,    62,    63,    64,    65,    66,    67,    58,    59,    60,
+      61,    62,    63,    64,    65,    66,    67,   211,   218,   219,
+      30,    31,     1,   223,   224,    30,    31,     1,   225,   228,
+     229,    30,    31,    58,    59,    60,    61,    62,    63,    64,
+      65,    66,    67,    32,   216,   232,   233,   237,    32,   236,
+      17,   212,   213,    33,    32,   238,    94,    34,   118,    68,
+      69,    35,    34,   235,    33,    89,    35,    84,    34,    36,
+     157,   227,    35,   221,   119,   231,   210,     0,     0,     0,
+      36,   -88,   -88,   -88,   -88,   -88,   -88,   -88,   -88,   -88,
+     -88
 };
 
-static const yytype_uint8 yycheck[] =
+static const yytype_int16 yycheck[] =
 {
-      12,   126,    27,    39,    13,    36,     9,     9,     9,    47,
-      98,    19,   177,    48,    29,    46,   181,    60,    61,    47,
-      23,    24,    25,    13,    36,     3,     4,     5,     6,     7,
-       8,     9,    10,    11,    12,    52,    44,    49,    50,    59,
-      78,   166,    47,    46,    56,    75,    58,    59,    60,   137,
-      78,    76,    64,    65,    66,    67,    92,    88,    61,    61,
-      61,    76,    65,   188,   189,    47,    69,    98,    77,    52,
-      60,    61,    53,    78,    77,    52,    88,     3,     4,     5,
-       6,     7,     8,     9,    10,    11,    12,    47,   119,     3,
-       4,     5,     6,     7,     8,     9,    10,    11,    12,     9,
-      78,   113,    47,   115,    47,    66,   137,   119,    71,    14,
-      73,   123,   148,    23,    24,    76,     9,    75,    78,   155,
-      25,    14,    15,    16,    17,    18,    19,    20,    21,    22,
-      23,    24,    61,    78,    52,    78,    46,    23,    24,    25,
-      42,    43,   178,    55,   180,    57,    40,    41,    77,     0,
-      77,    61,    78,    46,    25,    65,    25,   161,   162,    69,
-      46,     6,    77,     8,    78,    61,    61,    77,    61,    52,
-     182,   183,    65,   185,    25,    61,    69,    55,    77,    65,
-      49,    50,    51,    69,    77,     9,    10,    11,    12,     3,
-      58,    77,    56,    13,   206,    61,    52,    17,    49,    50,
-      51,    71,    72,    73,   216,    52,   218,     3,     4,     5,
-       6,     7,     8,     9,    10,    11,    12,    37,    38,    39,
-      52,    61,    42,    43,    17,    45,    30,     3,     4,     5,
-       6,     7,     8,     9,    10,    11,    12,    76,    44,    78,
-      60,    61,    37,    58,    37,    38,    39,    57,    56,    42,
-      43,    76,    45,    78,    52,    58,    76,    77,    78,    29,
-      31,    23,    24,    25,    76,    32,    78,    60,    61,    76,
-      55,    78,    40,    37,    70,    23,    24,    37,    58,    52,
-      17,    34,     3,    76,    46,    78,    62,    63,     3,     4,
-       5,     6,     7,     8,     9,    10,    11,    12,    46,    61,
-      37,    38,    39,    65,    31,    42,    43,    69,    45,    35,
-      56,    52,    67,    61,    65,    77,    65,    65,    76,    64,
-      76,    69,    61,    61,    76,     5,   230,    56,    51,    77,
+      12,   126,    13,    39,     9,    36,    27,    56,   177,    59,
+       0,    14,   181,    47,    47,    46,    56,    47,     9,    47,
+      29,    47,    25,    72,    36,     3,     4,     5,     6,     7,
+       8,     9,    10,    11,    12,    25,    98,    49,    50,    73,
+      73,   166,    56,    73,    56,    73,    58,    59,    60,    13,
+      71,    56,    64,    65,    66,    67,    92,    88,    48,    49,
+      50,    72,    71,   188,   189,    56,    54,    98,    47,    70,
+      47,    53,    55,    56,    25,   137,    88,     3,     4,     5,
+       6,     7,     8,     9,    10,    11,    12,    52,   119,    19,
+      72,    55,    56,    56,    73,    73,    73,    48,    49,    50,
+      61,   113,     6,   115,     8,    72,   137,   119,    42,    43,
+      71,   123,   148,    70,    44,     9,    10,    11,    12,   155,
        3,     4,     5,     6,     7,     8,     9,    10,    11,    12,
-     124,    55,   205,   218,   226,    60,    61,     3,     4,     5,
-       6,     7,     8,     9,    10,    11,    12,   193
+      72,     3,     4,     5,     6,     7,     8,     9,    10,    11,
+      12,    66,   178,    68,   180,     9,    56,    73,     9,    25,
+      14,    15,    16,    17,    18,    19,    20,    21,    22,    23,
+      24,    72,    23,    24,    25,     9,    66,    67,    68,    56,
+     182,   183,    71,   185,    73,    71,    71,    73,    73,    23,
+      24,    71,    46,    73,     3,    46,    40,    41,   161,   162,
+      73,    56,    56,    65,   206,    56,    60,    13,    56,    60,
+      64,    17,    46,    64,   216,    72,   218,    56,    72,    56,
+      17,    72,    56,    73,    71,    56,    60,    56,    56,    30,
+      64,    37,    38,    39,    44,    17,    42,    43,    72,    45,
+      37,    38,    39,    37,    71,    42,    43,    73,    45,    55,
+      56,    56,    71,    53,    29,    37,    38,    39,    55,    56,
+      42,    43,    31,    45,    32,    71,    72,    73,    40,    71,
+      37,    37,    56,    72,    71,    34,    73,     3,     4,     5,
+       6,     7,     8,     9,    10,    11,    12,     3,     4,     5,
+       6,     7,     8,     9,    10,    11,    12,     3,    31,    35,
+      23,    24,    25,    73,    56,    23,    24,    25,    62,    60,
+      59,    23,    24,     3,     4,     5,     6,     7,     8,     9,
+      10,    11,    12,    46,    71,    71,    56,    71,    46,    60,
+       5,    57,    58,    56,    46,    56,    56,    60,    56,    55,
+      56,    64,    60,   230,    56,    55,    64,    51,    60,    72,
+     124,   218,    64,   205,    72,   226,   194,    -1,    -1,    -1,
+      72,     3,     4,     5,     6,     7,     8,     9,    10,    11,
+      12
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    25,    49,    50,    51,    80,    81,    82,    83,   115,
-     116,   117,    85,    48,    52,    59,     0,    81,    75,    47,
+       0,    25,    48,    49,    50,    75,    76,    77,    78,   110,
+     111,   112,    80,    59,    56,    54,     0,    76,    70,    47,
        9,    14,    15,    16,    17,    18,    19,    20,    21,    22,
-      23,    24,    46,    61,    65,    69,    77,    86,    87,   104,
-      52,    53,    52,    75,    14,    83,    77,    13,    77,    71,
-      73,    89,    90,    82,   104,    27,    76,    84,     3,     4,
-       5,     6,     7,     8,     9,    10,    11,    12,    60,    61,
-      88,    55,    57,    52,    83,    82,     9,    61,     9,   104,
-     105,   104,   104,    72,    90,    78,    78,    61,    77,    91,
-      92,    93,    94,    95,    87,   104,   104,   104,    77,     6,
-       8,    61,   104,   104,   104,   104,    61,    52,   118,   119,
-      55,     3,    78,    76,    78,    70,    13,    88,    61,    77,
-      82,    91,   104,    29,    76,   103,    17,    38,    39,    42,
-      43,    45,    97,    99,    88,    82,   105,    77,    61,    58,
-      56,    52,    52,   120,   121,    52,   104,   104,    61,   102,
-      13,    82,   104,    78,    78,    78,   104,    92,    30,   106,
-      93,    42,    43,    96,    44,    98,    37,    78,    78,    82,
-     105,    57,    58,    58,    56,    52,    29,    88,    61,    78,
-      78,    88,    31,    32,   110,    40,    98,    98,    37,    37,
-      93,    78,    78,    55,    58,    52,   102,   102,   104,   107,
-     104,    34,   111,   104,    93,    93,    40,    41,   100,   101,
-     120,     3,    62,    63,   108,    66,    76,   109,    31,    35,
-     112,   101,   104,    56,    52,    67,   104,   107,    65,    64,
-     113,   108,    76,    61,   114,    84,    65,    76,    61
+      23,    24,    46,    56,    60,    64,    72,    81,    82,    99,
+      56,    52,    56,    70,    14,    78,    72,    13,    72,    66,
+      68,    84,    85,    77,    99,    27,    71,    79,     3,     4,
+       5,     6,     7,     8,     9,    10,    11,    12,    55,    56,
+      83,    53,    72,    56,    78,    77,     9,    56,     9,    99,
+     100,    99,    99,    67,    85,    73,    73,    56,    72,    86,
+      87,    88,    89,    90,    82,    99,    99,    99,    72,     6,
+       8,    56,    99,    99,    99,    99,    56,    72,    56,   113,
+     114,     3,    73,    71,    73,    65,    13,    83,    56,    72,
+      77,    86,    99,    29,    71,    98,    17,    38,    39,    42,
+      43,    45,    92,    94,    83,    77,   100,    72,    56,    56,
+     115,   116,    71,    73,    56,    56,    99,    99,    56,    97,
+      13,    77,    99,    73,    73,    73,    99,    87,    30,   101,
+      88,    42,    43,    91,    44,    93,    37,    73,    73,    77,
+     100,    71,    73,    56,    53,    71,    29,    83,    56,    73,
+      73,    83,    31,    32,   105,    40,    93,    93,    37,    37,
+      88,    73,    73,    71,    72,    56,    97,    97,    99,   102,
+      99,    34,   106,    99,    88,    88,    40,    41,    95,    96,
+     115,     3,    57,    58,   103,    61,    71,   104,    31,    35,
+     107,    96,    99,    73,    56,    62,    99,   102,    60,    59,
+     108,   103,    71,    56,   109,    79,    60,    71,    56
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    79,    80,    80,    81,    81,    81,    81,    81,    82,
-      82,    82,    83,    83,    84,    85,    85,    85,    85,    85,
-      85,    85,    85,    85,    85,    86,    86,    86,    87,    88,
-      88,    88,    89,    89,    90,    90,    91,    91,    92,    92,
-      93,    93,    93,    93,    93,    94,    95,    95,    95,    95,
-      95,    96,    96,    96,    97,    97,    98,    98,    99,    99,
-      99,   100,   100,   101,   101,   102,   103,   103,   104,   104,
-     104,   104,   104,   104,   104,   104,   104,   104,   104,   104,
-     104,   104,   104,   104,   104,   104,   104,   104,   104,   104,
-     104,   104,   105,   105,   105,   106,   106,   107,   107,   108,
-     108,   108,   109,   109,   110,   110,   111,   111,   112,   112,
-     112,   113,   113,   114,   114,   115,   116,   117,   117,   118,
-     118,   119,   119,   120,   120,   121,   121
+       0,    74,    75,    75,    76,    76,    76,    76,    76,    77,
+      77,    77,    78,    78,    79,    80,    80,    80,    80,    80,
+      80,    80,    80,    80,    80,    81,    81,    81,    82,    83,
+      83,    83,    84,    84,    85,    85,    86,    86,    87,    87,
+      88,    88,    88,    88,    88,    89,    90,    90,    90,    90,
+      90,    91,    91,    91,    92,    92,    93,    93,    94,    94,
+      94,    95,    95,    96,    96,    97,    98,    98,    99,    99,
+      99,    99,    99,    99,    99,    99,    99,    99,    99,    99,
+      99,    99,    99,    99,    99,    99,    99,    99,    99,    99,
+      99,    99,   100,   100,   100,   101,   101,   102,   102,   103,
+     103,   103,   104,   104,   105,   105,   106,   106,   107,   107,
+     107,   108,   108,   109,   109,   110,   111,   112,   112,   113,
+     113,   114,   114,   115,   115,   116,   116
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
@@ -1589,93 +1615,78 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 165 "Grammar.y" /* yacc.c:1646  */
+#line 195 "Grammar.y" /* yacc.c:1646  */
     {
-        // Delete_tree($1);
-        // Del_select_info_vector();
+        (yyval.node) = (yyvsp[-1].node);
+        _Global.root = (yyval.node);
     }
-#line 1598 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1624 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 170 "Grammar.y" /* yacc.c:1646  */
-    {
-        // Delete_tree($2);
-        // Del_select_info_vector();
-        // printf("归约成功!\n");
+#line 200 "Grammar.y" /* yacc.c:1646  */
+    {   
+        (yyval.node) = (yyvsp[-1].node);
+        (yyvsp[-2].node)->R_child = (yyvsp[-1].node);
     }
-#line 1608 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1633 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 178 "Grammar.y" /* yacc.c:1646  */
+#line 207 "Grammar.y" /* yacc.c:1646  */
     {
-          (yyval.node) = Create_new_node(0,"SELECT T 语句");
-   }
-#line 1616 "Grammar.tab.c" /* yacc.c:1646  */
+        (yyval.node) = Create_new_node(0,"SELECT T 语句");
+    }
+#line 1641 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 181 "Grammar.y" /* yacc.c:1646  */
-    {printf("\tstat : insert\n");}
-#line 1622 "Grammar.tab.c" /* yacc.c:1646  */
+#line 211 "Grammar.y" /* yacc.c:1646  */
+    {
+        (yyval.node) = Create_new_node(INSERT,"INSERT");
+        (yyval.node)->L_child = (yyvsp[0].node); 
+    }
+#line 1650 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 182 "Grammar.y" /* yacc.c:1646  */
-    {printf("\tstat : update\n");}
-#line 1628 "Grammar.tab.c" /* yacc.c:1646  */
+#line 216 "Grammar.y" /* yacc.c:1646  */
+    {
+        printf("\tstat : update\n");
+    }
+#line 1658 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 183 "Grammar.y" /* yacc.c:1646  */
-    {printf("\tstat : create\n");}
-#line 1634 "Grammar.tab.c" /* yacc.c:1646  */
+#line 220 "Grammar.y" /* yacc.c:1646  */
+    {
+        printf("\tstat : create\n");
+    }
+#line 1666 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 185 "Grammar.y" /* yacc.c:1646  */
+#line 224 "Grammar.y" /* yacc.c:1646  */
     {
-                    Main_struct((yyvsp[0].node),"MAIN");
-
-                    if(_Global.mode == GET_MODE)
-                    {
-                         Str_cut_for_real_alias(_Global.field_name,&_Global.database_name,&_Global.table_alias_name,&_Global.real_field_name);
-                         Connect_enum_main();
-                         Show_the_filed_info(_Global.field_name);
-                    }
-                    else if(_Global.mode == ALL_MODE)
-                    {
-                        Connect_enum_main();
-                        Show_stmt_info();
-                    }
-                    else if(_Global.mode == PHYSICAL_MODE)
-                    {
-                        Connect_enum_main();
-                        Show_all_physical_table();
-                    }
-                    Delete_tree((yyvsp[0].node));
-                    Del_select_info_vector();
-                    Del_stmt_vector();
-                    Init_stmt_vector();
-                    printf("\n");
-                    // printf("|-----------------------------------------------------------------|\n");
-                }
-#line 1665 "Grammar.tab.c" /* yacc.c:1646  */
+        (yyval.node) = Create_new_node(SELECT,"SELECT");
+        (yyval.node)->L_child = (yyvsp[0].node);
+        Main_struct((yyvsp[0].node),"MAIN");
+    }
+#line 1676 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 214 "Grammar.y" /* yacc.c:1646  */
+#line 232 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"\nBEGIN");
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node); 
           }
-#line 1675 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1686 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 220 "Grammar.y" /* yacc.c:1646  */
+#line 238 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"BEGIN 语句 union");
                 (yyval.node)->L_child = (yyvsp[-2].node);
@@ -1683,11 +1694,11 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 1687 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1698 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 228 "Grammar.y" /* yacc.c:1646  */
+#line 246 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"BEGIN 语句 union");
                 (yyval.node)->L_child = (yyvsp[-3].node);
@@ -1695,11 +1706,11 @@ yyreduce:
                 (yyvsp[-3].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-3].node);
           }
-#line 1699 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1710 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 238 "Grammar.y" /* yacc.c:1646  */
+#line 256 "Grammar.y" /* yacc.c:1646  */
     {
                     char con[500];
                     sprintf(con,"SELECT %s %s",
@@ -1714,11 +1725,11 @@ yyreduce:
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 1718 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1729 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 253 "Grammar.y" /* yacc.c:1646  */
+#line 271 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[500];
                 sprintf(con,"SELECT %s %s FROM %s %s %s %s %s %s %s",
@@ -1762,27 +1773,27 @@ yyreduce:
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
           }
-#line 1766 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1777 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 303 "Grammar.y" /* yacc.c:1646  */
+#line 321 "Grammar.y" /* yacc.c:1646  */
     {
        (yyval.node) = Create_new_node(END,"SELECT BEGIN : ");
    }
-#line 1774 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1785 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 307 "Grammar.y" /* yacc.c:1646  */
+#line 325 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
               }
-#line 1782 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1793 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 311 "Grammar.y" /* yacc.c:1646  */
+#line 329 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1790,11 +1801,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1794 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1805 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 319 "Grammar.y" /* yacc.c:1646  */
+#line 337 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1802,11 +1813,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1806 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1817 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 327 "Grammar.y" /* yacc.c:1646  */
+#line 345 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1814,11 +1825,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1818 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1829 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 335 "Grammar.y" /* yacc.c:1646  */
+#line 353 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1826,11 +1837,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1830 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1841 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 343 "Grammar.y" /* yacc.c:1646  */
+#line 361 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1838,11 +1849,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1842 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1853 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 351 "Grammar.y" /* yacc.c:1646  */
+#line 369 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt3");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1850,11 +1861,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1854 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1865 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 359 "Grammar.y" /* yacc.c:1646  */
+#line 377 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1862,11 +1873,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1866 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1877 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 367 "Grammar.y" /* yacc.c:1646  */
+#line 385 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1874,11 +1885,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1878 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1889 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 375 "Grammar.y" /* yacc.c:1646  */
+#line 393 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_OPT_BEGIN,"select_opt");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1886,21 +1897,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 1890 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1901 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 388 "Grammar.y" /* yacc.c:1646  */
+#line 406 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_INFO_BEGIN,"field_info_begin");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 1900 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1911 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 394 "Grammar.y" /* yacc.c:1646  */
+#line 412 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_INFO_BEGIN,"field_info_begin");
                     (yyval.node)->L_child = (yyvsp[-2].node);
@@ -1908,19 +1919,19 @@ yyreduce:
                     (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 }
-#line 1912 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1923 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 402 "Grammar.y" /* yacc.c:1646  */
+#line 420 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(FIELD_NAME,"*");
                 }
-#line 1920 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1931 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 411 "Grammar.y" /* yacc.c:1646  */
+#line 429 "Grammar.y" /* yacc.c:1646  */
     {
               (yyval.node) = Create_new_node(FIELD_NODE,"field");
               (yyval.node)->L_child = (yyvsp[-1].node);
@@ -1928,47 +1939,47 @@ yyreduce:
               (yyvsp[-1].node)->R_child = (yyvsp[0].node);
               (yyvsp[0].node)->Parent = (yyvsp[-1].node);
            }
-#line 1932 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1943 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 425 "Grammar.y" /* yacc.c:1646  */
+#line 443 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,(yyvsp[0].strval)); 
                 free((yyvsp[0].strval));
             }
-#line 1941 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1952 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 430 "Grammar.y" /* yacc.c:1646  */
+#line 448 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,(yyvsp[0].strval)); 
                 free((yyvsp[0].strval));
             }
-#line 1950 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1961 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 435 "Grammar.y" /* yacc.c:1646  */
+#line 453 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ALIAS_NAME,"NULL"); 
             }
-#line 1958 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1969 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 444 "Grammar.y" /* yacc.c:1646  */
+#line 462 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(2,(yyvsp[0].node)->RHS); 
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
              }
-#line 1968 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1979 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 450 "Grammar.y" /* yacc.c:1646  */
+#line 468 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-1].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                 sprintf(con,"%s %s",(yyvsp[-1].node)->RHS,(yyvsp[0].node)->RHS);
@@ -1979,11 +1990,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
              }
-#line 1983 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1994 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 463 "Grammar.y" /* yacc.c:1646  */
+#line 481 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+20);
                 sprintf(con,"WHEN　%s THEN %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -1994,11 +2005,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 free(con);
          }
-#line 1998 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2009 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 35:
-#line 474 "Grammar.y" /* yacc.c:1646  */
+#line 492 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[0].node)->RHS)+10);
                 sprintf(con,"ELSE %s",(yyvsp[0].node)->RHS);
@@ -2007,21 +2018,21 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyval.node);
                 free(con);
          }
-#line 2011 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2022 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 489 "Grammar.y" /* yacc.c:1646  */
+#line 507 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(TABLE_INFO,"表信息");
                    (yyval.node)->L_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyval.node);
                 }
-#line 2021 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2032 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 495 "Grammar.y" /* yacc.c:1646  */
+#line 513 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(TABLE_INFO,"表信息");
                    (yyval.node)->L_child = (yyvsp[-2].node);
@@ -2029,11 +2040,11 @@ yyreduce:
                    (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                 }
-#line 2033 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2044 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 512 "Grammar.y" /* yacc.c:1646  */
+#line 530 "Grammar.y" /* yacc.c:1646  */
     {
                                 (yyval.node) = Create_new_node(NORMAL_TABLE,"Normal table");
                                 (yyval.node)->L_child = (yyvsp[0].node);
@@ -2041,21 +2052,21 @@ yyreduce:
                               //  Enum_tree_node_deep($$);
                               //  printf("%s  %d\n",$$->RHS,$$->type);
                               }
-#line 2045 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2056 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 520 "Grammar.y" /* yacc.c:1646  */
+#line 538 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(JOIN_TABLE,"JOIN表");
                    (yyval.node)->L_child = (yyvsp[0].node);
                    (yyvsp[0].node)->Parent = (yyval.node);
                }
-#line 2055 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2066 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 533 "Grammar.y" /* yacc.c:1646  */
+#line 551 "Grammar.y" /* yacc.c:1646  */
     { 
                                              (yyval.node) = Create_new_node(TABLE_NAME,(yyvsp[-2].strval));
                                              free((yyvsp[-2].strval));
@@ -2065,11 +2076,11 @@ yyreduce:
                                              (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                                         //   printf("%s  %d\n",$$->RHS,$$->type);
                                             }
-#line 2069 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2080 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 543 "Grammar.y" /* yacc.c:1646  */
+#line 561 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[200];
                 sprintf(con,"%s.%s",(yyvsp[-4].strval),(yyvsp[-2].strval));
@@ -2080,11 +2091,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2084 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2095 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 554 "Grammar.y" /* yacc.c:1646  */
+#line 572 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_SUB,"table_sub");
                 (yyval.node)->L_child = (yyvsp[-1].node);
@@ -2092,21 +2103,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2096 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2107 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 562 "Grammar.y" /* yacc.c:1646  */
+#line 580 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_REFERENCE,"为(table_references)");
                 (yyval.node)->L_child = (yyvsp[-1].node);
                 (yyvsp[-1].node)->Parent = (yyval.node);
             }
-#line 2106 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2117 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 568 "Grammar.y" /* yacc.c:1646  */
+#line 586 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(TABLE_REFERENCE,"为(table_references)");
                 (yyval.node)->L_child = (yyvsp[-3].node);
@@ -2116,21 +2127,21 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2120 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2131 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 581 "Grammar.y" /* yacc.c:1646  */
+#line 599 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(SELECT_SELECT,"(子查询");
                 (yyval.node)->L_child = (yyvsp[-1].node);
                 (yyvsp[-1].node)->Parent = (yyval.node);
               }
-#line 2130 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2141 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 592 "Grammar.y" /* yacc.c:1646  */
+#line 610 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_1,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2142,11 +2153,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 2146 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2157 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 604 "Grammar.y" /* yacc.c:1646  */
+#line 622 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_2,"Join表的选项 JION2");
                 (yyval.node)->L_child = (yyvsp[-2].node);
@@ -2154,11 +2165,11 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 2158 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2169 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 612 "Grammar.y" /* yacc.c:1646  */
+#line 630 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_3,"Join表的选项 STRIGHT_JOIN ON3");
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2169,11 +2180,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
 
           }
-#line 2173 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2184 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 623 "Grammar.y" /* yacc.c:1646  */
+#line 641 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_4,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[-5].node);
@@ -2187,11 +2198,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
           }
-#line 2191 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2202 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 637 "Grammar.y" /* yacc.c:1646  */
+#line 655 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(JOIN_TABLE_5,"Join表的选项 NATURAL5");
                 (yyval.node)->L_child = (yyvsp[-4].node);
@@ -2201,113 +2212,113 @@ yyreduce:
                 (yyvsp[-2].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-2].node);
           }
-#line 2205 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2216 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 649 "Grammar.y" /* yacc.c:1646  */
+#line 667 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(LEFT,"LEFT");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                  }
-#line 2215 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2226 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 655 "Grammar.y" /* yacc.c:1646  */
+#line 673 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(RIGHT,"RIGHT");
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                  }
-#line 2225 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2236 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 661 "Grammar.y" /* yacc.c:1646  */
+#line 679 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(RIGHT,"NULL");
                  }
-#line 2233 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2244 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 667 "Grammar.y" /* yacc.c:1646  */
+#line 685 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(LEFT,"LEFT");
              }
-#line 2241 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2252 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 671 "Grammar.y" /* yacc.c:1646  */
+#line 689 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(RIGHT,"RIGHT");
              }
-#line 2249 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2260 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 677 "Grammar.y" /* yacc.c:1646  */
+#line 695 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"NULL");
          }
-#line 2257 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2268 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 681 "Grammar.y" /* yacc.c:1646  */
+#line 699 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"OUTER");
          }
-#line 2265 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2276 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 687 "Grammar.y" /* yacc.c:1646  */
+#line 705 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"NULL");
                }
-#line 2273 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2284 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 691 "Grammar.y" /* yacc.c:1646  */
+#line 709 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"INNER");
                }
-#line 2281 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2292 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 695 "Grammar.y" /* yacc.c:1646  */
+#line 713 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(1,"CROSS");
                }
-#line 2289 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2300 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 701 "Grammar.y" /* yacc.c:1646  */
+#line 719 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(1,"NULL");
                   }
-#line 2297 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2308 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 705 "Grammar.y" /* yacc.c:1646  */
+#line 723 "Grammar.y" /* yacc.c:1646  */
     {
                     (yyval.node) = Create_new_node(JOIN_CONDITION,(yyvsp[0].node)->RHS);
                     (yyval.node)->L_child = (yyvsp[0].node);
                     (yyvsp[0].node)->Parent = (yyval.node);
                   }
-#line 2307 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2318 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 713 "Grammar.y" /* yacc.c:1646  */
+#line 731 "Grammar.y" /* yacc.c:1646  */
     {
                   char* con = (char*)malloc(strlen((yyvsp[0].node)->RHS)+1);
                   sprintf(con,"ON %s",(yyvsp[0].node)->RHS);
@@ -2316,45 +2327,45 @@ yyreduce:
                   (yyvsp[0].node)->Parent = (yyval.node);
                   free(con);
               }
-#line 2320 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2331 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 722 "Grammar.y" /* yacc.c:1646  */
+#line 740 "Grammar.y" /* yacc.c:1646  */
     {
                   (yyval.node) = Create_new_node(JOIN_CONDITION,"USING");
               }
-#line 2328 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2339 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 731 "Grammar.y" /* yacc.c:1646  */
+#line 749 "Grammar.y" /* yacc.c:1646  */
     {
               (yyval.node) = Create_new_node(1,"index NULL");
           }
-#line 2336 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2347 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 737 "Grammar.y" /* yacc.c:1646  */
+#line 755 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"NO WHERE");
          }
-#line 2344 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2355 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 741 "Grammar.y" /* yacc.c:1646  */
+#line 759 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(OPT_WHERE,(yyvsp[0].node)->RHS);
             (yyval.node)->L_child = (yyvsp[0].node);
             (yyvsp[0].node)->Parent = (yyval.node);
          }
-#line 2354 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2365 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 750 "Grammar.y" /* yacc.c:1646  */
+#line 768 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[-1].strval))+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s %s %s",(yyvsp[-2].node)->RHS,(yyvsp[-1].strval),(yyvsp[0].node)->RHS);
@@ -2371,11 +2382,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2375 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2386 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 767 "Grammar.y" /* yacc.c:1646  */
+#line 785 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s AND %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2393,11 +2404,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2397 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2408 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 785 "Grammar.y" /* yacc.c:1646  */
+#line 803 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s OR %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2415,11 +2426,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2419 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2430 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 803 "Grammar.y" /* yacc.c:1646  */
+#line 821 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s - %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2435,11 +2446,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2439 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2450 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 819 "Grammar.y" /* yacc.c:1646  */
+#line 837 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s + %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2455,11 +2466,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2459 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2470 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 835 "Grammar.y" /* yacc.c:1646  */
+#line 853 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s * %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2475,11 +2486,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2479 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2490 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 851 "Grammar.y" /* yacc.c:1646  */
+#line 869 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10);
                    sprintf(con,"%s / %s",(yyvsp[-2].node)->RHS,(yyvsp[0].node)->RHS);
@@ -2496,11 +2507,11 @@ yyreduce:
                    (yyvsp[0].node)->Parent = (yyvsp[-2].node);
                    free(con);
                }
-#line 2500 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2511 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 868 "Grammar.y" /* yacc.c:1646  */
+#line 886 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-4].node)->RHS)+20);
                    sprintf(con,"%s IN (子查询",(yyvsp[-4].node)->RHS);
@@ -2511,11 +2522,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-4].node);
                    free(con);
                }
-#line 2515 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2526 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 879 "Grammar.y" /* yacc.c:1646  */
+#line 897 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-5].node)->RHS)+20);
                    sprintf(con,"%s NOT IN (子查询",(yyvsp[-5].node)->RHS);
@@ -2526,11 +2537,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-5].node);
                    free(con);
                }
-#line 2530 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2541 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 890 "Grammar.y" /* yacc.c:1646  */
+#line 908 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+strlen((yyvsp[-4].node)->RHS)+20);
                    sprintf(con,"%s IN (%s)",(yyvsp[-4].node)->RHS,(yyvsp[-1].node)->RHS);
@@ -2546,11 +2557,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-4].node);
                    free(con);
                }
-#line 2550 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2561 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 906 "Grammar.y" /* yacc.c:1646  */
+#line 924 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-5].node)->RHS)+strlen((yyvsp[-1].node)->RHS)+20);
                    sprintf(con,"%s NOT IN (%s)",(yyvsp[-5].node)->RHS,(yyvsp[-1].node)->RHS);
@@ -2566,11 +2577,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyvsp[-5].node);
                    free(con);
                }
-#line 2570 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2581 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 922 "Grammar.y" /* yacc.c:1646  */
+#line 940 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+10);
                    sprintf(con,"( %s )",(yyvsp[-1].node)->RHS);
@@ -2579,60 +2590,60 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyval.node);
                    free(con);
                }
-#line 2583 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2594 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 931 "Grammar.y" /* yacc.c:1646  */
+#line 949 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SELECT_SELECT,"EXISTS (子查询");
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2593 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2604 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 937 "Grammar.y" /* yacc.c:1646  */
+#line 955 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                    free((yyvsp[0].strval));
                }
-#line 2602 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2613 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 82:
-#line 942 "Grammar.y" /* yacc.c:1646  */
+#line 960 "Grammar.y" /* yacc.c:1646  */
     {
                    char con[200];
                    sprintf(con,"%s.*",(yyvsp[-2].strval));
                    (yyval.node) = Create_new_node(1,con);
                    free((yyvsp[-2].strval));
                }
-#line 2613 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2624 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 949 "Grammar.y" /* yacc.c:1646  */
+#line 967 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                    free((yyvsp[0].strval));
                }
-#line 2622 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2633 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 954 "Grammar.y" /* yacc.c:1646  */
+#line 972 "Grammar.y" /* yacc.c:1646  */
     {
                    char con[200];
                    sprintf(con,"%s.%s",(yyvsp[-2].strval),(yyvsp[0].strval));
                    (yyval.node) = Create_new_node(1,con);
                }
-#line 2632 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2643 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 960 "Grammar.y" /* yacc.c:1646  */
+#line 978 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-1].node)->RHS)+10);
                    sprintf(con,"(CASE %s END)",(yyvsp[-1].node)->RHS);
@@ -2641,11 +2652,11 @@ yyreduce:
                    (yyvsp[-1].node)->Parent = (yyval.node);
                    free(con);
                }
-#line 2645 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2656 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 969 "Grammar.y" /* yacc.c:1646  */
+#line 987 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].strval))+10);
                    sprintf(con,"%s LIKE %s",(yyvsp[-2].node)->RHS,(yyvsp[0].strval));
@@ -2655,11 +2666,11 @@ yyreduce:
                    free(con);
                    free((yyvsp[0].strval));
                }
-#line 2659 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2670 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 979 "Grammar.y" /* yacc.c:1646  */
+#line 997 "Grammar.y" /* yacc.c:1646  */
     {
                    char* con = (char*)malloc(strlen((yyvsp[-3].node)->RHS)+strlen((yyvsp[0].strval))+10);
                    sprintf(con,"%s NOT LIKE %s",(yyvsp[-3].node)->RHS,(yyvsp[0].strval));
@@ -2669,37 +2680,37 @@ yyreduce:
                    free(con);
                    free((yyvsp[0].strval));
                }
-#line 2673 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2684 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 88:
-#line 989 "Grammar.y" /* yacc.c:1646  */
+#line 1007 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SELECT_SELECT,"(子查询"); 
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2683 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2694 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 89:
-#line 997 "Grammar.y" /* yacc.c:1646  */
+#line 1015 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(SYSTEM_CALL_VARIABLE,(yyvsp[0].strval)); 
                }
-#line 2691 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2702 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 90:
-#line 1001 "Grammar.y" /* yacc.c:1646  */
+#line 1019 "Grammar.y" /* yacc.c:1646  */
     {
                    (yyval.node) = Create_new_node(USER_CALL_VARIABLE,(yyvsp[0].strval)); 
                }
-#line 2699 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2710 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 91:
-#line 1008 "Grammar.y" /* yacc.c:1646  */
+#line 1026 "Grammar.y" /* yacc.c:1646  */
     {
                 //    char con[10000];
                 //   printf("%d ",strlen($1)+strlen($3->RHS)+30);
@@ -2711,21 +2722,21 @@ yyreduce:
                    (yyval.node)->L_child = (yyvsp[-1].node);
                    (yyvsp[-1].node)->Parent = (yyval.node);
                }
-#line 2715 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2726 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 92:
-#line 1022 "Grammar.y" /* yacc.c:1646  */
+#line 1040 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node((yyvsp[0].node)->type,(yyvsp[0].node)->RHS);
             (yyval.node)->L_child = (yyvsp[0].node);
             (yyvsp[0].node)->Parent = (yyval.node);
         }
-#line 2725 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2736 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 93:
-#line 1028 "Grammar.y" /* yacc.c:1646  */
+#line 1046 "Grammar.y" /* yacc.c:1646  */
     {
             
             char* con = (char*)malloc(strlen((yyvsp[-2].node)->RHS)+strlen((yyvsp[0].node)->RHS)+10); 
@@ -2742,27 +2753,27 @@ yyreduce:
             (yyvsp[0].node)->Parent = (yyvsp[-2].node);
             free(con);
         }
-#line 2746 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2757 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 94:
-#line 1045 "Grammar.y" /* yacc.c:1646  */
+#line 1063 "Grammar.y" /* yacc.c:1646  */
     {
             (yyval.node) = Create_new_node(1,"*");
         }
-#line 2754 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2765 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 95:
-#line 1053 "Grammar.y" /* yacc.c:1646  */
+#line 1071 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_group_by NULL");
             }
-#line 2762 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2773 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 96:
-#line 1057 "Grammar.y" /* yacc.c:1646  */
+#line 1075 "Grammar.y" /* yacc.c:1646  */
     {
                 char con[500];
                 int c = ((yyvsp[0].node)->type == 0)?0:1;
@@ -2781,11 +2792,11 @@ yyreduce:
                 (yyvsp[-1].node)->R_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
             }
-#line 2785 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2796 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 97:
-#line 1078 "Grammar.y" /* yacc.c:1646  */
+#line 1096 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-1].node)->RHS)+20);
                 int c = (yyvsp[0].node)->type;
@@ -2799,11 +2810,11 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
             }
-#line 2803 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2814 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 98:
-#line 1092 "Grammar.y" /* yacc.c:1646  */
+#line 1110 "Grammar.y" /* yacc.c:1646  */
     {
                 char* con=(char*)malloc(strlen((yyvsp[-3].node)->RHS)+20+strlen((yyvsp[-1].node)->RHS));
                 int c = (yyvsp[0].node)->type;
@@ -2821,227 +2832,231 @@ yyreduce:
                 (yyvsp[0].node)->Parent = (yyvsp[-1].node);
                 free(con);
             }
-#line 2825 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2836 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 99:
-#line 1112 "Grammar.y" /* yacc.c:1646  */
+#line 1130 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(0,"opt_asc_desc NULL");
             }
-#line 2833 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2844 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 100:
-#line 1116 "Grammar.y" /* yacc.c:1646  */
+#line 1134 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(1,"ASC");
             }
-#line 2841 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2852 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 101:
-#line 1120 "Grammar.y" /* yacc.c:1646  */
+#line 1138 "Grammar.y" /* yacc.c:1646  */
     {
                (yyval.node) = Create_new_node(1,"DESC");
             }
-#line 2849 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2860 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 102:
-#line 1126 "Grammar.y" /* yacc.c:1646  */
+#line 1144 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_with_rollup NULL");
               }
-#line 2857 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2868 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 103:
-#line 1130 "Grammar.y" /* yacc.c:1646  */
+#line 1148 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"WHIT ROLLUP");
               }
-#line 2865 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2876 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 104:
-#line 1136 "Grammar.y" /* yacc.c:1646  */
+#line 1154 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(1,"opt_having NULL");
           }
-#line 2873 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2884 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 105:
-#line 1140 "Grammar.y" /* yacc.c:1646  */
+#line 1158 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(HAVING,(yyvsp[0].node)->RHS);
              (yyval.node)->L_child = (yyvsp[0].node);
              (yyvsp[0].node)->Parent = (yyval.node);
           }
-#line 2883 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2894 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 106:
-#line 1148 "Grammar.y" /* yacc.c:1646  */
+#line 1166 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(0,"opt_order_by NULL");
             }
-#line 2891 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2902 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 107:
-#line 1152 "Grammar.y" /* yacc.c:1646  */
+#line 1170 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(ORDER,(yyvsp[0].node)->RHS);
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
             }
-#line 2901 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2912 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 1160 "Grammar.y" /* yacc.c:1646  */
+#line 1178 "Grammar.y" /* yacc.c:1646  */
     {
              (yyval.node) = Create_new_node(1,"opt_limit NULL");
          }
-#line 2909 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2920 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 1164 "Grammar.y" /* yacc.c:1646  */
+#line 1182 "Grammar.y" /* yacc.c:1646  */
     {
             char con[100];
             sprintf(con,"LIMIT %s",(yyvsp[0].strval));
             free((yyvsp[0].strval));
             (yyval.node) = Create_new_node(1,con);
          }
-#line 2920 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2931 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 1171 "Grammar.y" /* yacc.c:1646  */
+#line 1189 "Grammar.y" /* yacc.c:1646  */
     {
             char con[100];
             sprintf(con,"LIMIT %s.%s",(yyvsp[-2].strval),(yyvsp[0].strval));
             free((yyvsp[-2].strval)); free((yyvsp[0].strval));
             (yyval.node) = Create_new_node(1,con);
          }
-#line 2931 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2942 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 1180 "Grammar.y" /* yacc.c:1646  */
+#line 1198 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"opt_into_list NULL");
              }
-#line 2939 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2950 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 1184 "Grammar.y" /* yacc.c:1646  */
+#line 1202 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,"INTO");
                 (yyval.node)->L_child = (yyvsp[0].node);
                 (yyvsp[0].node)->Parent = (yyval.node);
              }
-#line 2949 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2960 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 1192 "Grammar.y" /* yacc.c:1646  */
+#line 1210 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                 free((yyvsp[0].strval));
            }
-#line 2958 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2969 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 1197 "Grammar.y" /* yacc.c:1646  */
+#line 1215 "Grammar.y" /* yacc.c:1646  */
     {
                 (yyval.node) = Create_new_node(1,(yyvsp[0].strval));
                 free((yyvsp[0].strval));
                 (yyval.node)->L_child = (yyvsp[-2].node);
                 (yyvsp[-2].node)->Parent = (yyval.node);
            }
-#line 2969 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2980 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 1205 "Grammar.y" /* yacc.c:1646  */
+#line 1223 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2975 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2986 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 1207 "Grammar.y" /* yacc.c:1646  */
+#line 1225 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2981 "Grammar.tab.c" /* yacc.c:1646  */
+#line 2992 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 1210 "Grammar.y" /* yacc.c:1646  */
-    {}
-#line 2987 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1229 "Grammar.y" /* yacc.c:1646  */
+    {
+                (yyval.node) = Create_new_node(INSERT,"insert into name() valuse()");
+            }
+#line 3000 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 1211 "Grammar.y" /* yacc.c:1646  */
-    {}
-#line 2993 "Grammar.tab.c" /* yacc.c:1646  */
+#line 1233 "Grammar.y" /* yacc.c:1646  */
+    {
+                (yyval.node) = Create_new_node(INSERT,"insert into name() valuse()");
+            }
+#line 3008 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 1214 "Grammar.y" /* yacc.c:1646  */
+#line 1238 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 2999 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3014 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 1215 "Grammar.y" /* yacc.c:1646  */
+#line 1239 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3005 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3020 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 1218 "Grammar.y" /* yacc.c:1646  */
+#line 1242 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3011 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3026 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 122:
-#line 1219 "Grammar.y" /* yacc.c:1646  */
+#line 1243 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3017 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3032 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 123:
-#line 1222 "Grammar.y" /* yacc.c:1646  */
+#line 1246 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3023 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3038 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 124:
-#line 1223 "Grammar.y" /* yacc.c:1646  */
+#line 1247 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3029 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3044 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 125:
-#line 1226 "Grammar.y" /* yacc.c:1646  */
+#line 1250 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3035 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3050 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 126:
-#line 1227 "Grammar.y" /* yacc.c:1646  */
+#line 1251 "Grammar.y" /* yacc.c:1646  */
     {}
-#line 3041 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3056 "Grammar.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 3045 "Grammar.tab.c" /* yacc.c:1646  */
+#line 3060 "Grammar.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -3269,7 +3284,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1231 "Grammar.y" /* yacc.c:1906  */
+#line 1255 "Grammar.y" /* yacc.c:1906  */
 
 
 int yyerror(char* a , int state)
@@ -3284,17 +3299,93 @@ int yyerror(char* a , int state)
 
 int main(int argc, char ** argv)
 {  
-    Init_stmt_vector();
-    parse_getopt(argc,argv);
-    yyparse();
-    Del_stmt_vector();
+    Init_stmt_vector();         //初始化全局变量
+    parse_getopt(argc,argv);    //解析命令行的参数
+    yyparse();                  //解析词法和建立语法树
+    Main_mode();                //具体动作
+    Del_stmt_vector();          //释放掉所有空间
     return 0;
 }
  
+
+void Main_mode()
+{
+    if(_Global.mode == GET_MODE)
+    {
+        Str_cut_for_real_alias(_Global.field_name,&_Global.database_name,&_Global.table_alias_name,&_Global.real_field_name);
+        Connect_enum_main();
+        Show_the_filed_info(_Global.field_name);
+    }
+    else if(_Global.mode == ALL_MODE)
+    {
+        Connect_enum_main();
+        Show_stmt_info();
+    }
+    else if(_Global.mode == PHYSICAL_MODE)
+    {
+        Connect_enum_main();
+        Show_all_physical_table();
+    }
+    else if(_Global.mode == TEST_MODE)
+    {
+        printf("%s",_Global.ptr_chache->chache);
+    }
+    else if(_Global.mode == BACK_STMT)
+    {
+        Connect_enum_main();
+        Get_back_stmt(&_stmt);
+    }
+
+}
+
+
 void Init_stmt_vector()
 {
     _stmt.vector_stmt = Init_vector(10);
-    count=0;
+    _Global.count=0;
+    _Global.ptr_chache = (chache_stmt*)calloc(sizeof(chache_stmt),1);
+    Init_chache_stmt();
+}
+
+void Init_chache_stmt()
+{
+    _Global.ptr_chache->size = STMT_MAX;
+    _Global.ptr_chache->now_offset = 0;
+    _Global.ptr_chache->chache = (char*)calloc(_Global.ptr_chache->size,1);   
+    if(_Global.ptr_chache->chache == NULL)
+    {
+        exit(0);
+    }
+}
+
+int Insert_str(char* str)
+{
+    if( _Global.ptr_chache->now_offset + strlen(str) >= _Global.ptr_chache->size)
+    {
+        Expend_chache();    
+    }
+    memcpy(_Global.ptr_chache->chache + _Global.ptr_chache->now_offset,str,strlen(str));
+    _Global.ptr_chache->now_offset += strlen(str);
+    return _Global.ptr_chache->now_offset;
+}
+
+void Expend_chache()
+{
+    _Global.ptr_chache->chache = (char*)realloc(_Global.ptr_chache->chache,_Global.ptr_chache->size*2);
+    if(_Global.ptr_chache->chache == NULL)
+    {
+        exit(0);
+    }
+}
+
+void Show_string(_String* string)
+{
+    int         i;
+
+    for(i = 0;i<string->string_size;i++)
+    {
+        printf("%c",string->string_ptr[i]);
+    }
 }
 
 void Init_select_info_vector(select_info* select_con)
@@ -3435,9 +3526,9 @@ void Get_field_info_child(Tree_Node* enum_man,select_info* select_con)
     if(tem->type == SELECT_SELECT)
     {
         tem->RHS = (char *)realloc(tem->RHS,strlen(tem->RHS)+30);
-        sprintf(tem->RHS,"%s%d)",tem->RHS,count);
+        sprintf(tem->RHS,"%s%d)",tem->RHS,_Global.count);
         tem_struct->field_name = tem;
-        count++;
+        _Global.count++;
         Main_struct(tem,tem->RHS);
     }
     else
@@ -3504,9 +3595,9 @@ void Normal_get_info(Tree_Node* enum_man,select_info* select_con)
     if(tem->type == SELECT_SELECT)
     {
         tem->RHS = (char *)realloc(tem->RHS,strlen(tem->RHS)+30);
-        sprintf(tem->RHS,"%s%d)",tem->RHS,count);
+        sprintf(tem->RHS,"%s%d)",tem->RHS,_Global.count);
         tem_struct->obj_name = tem;
-        count++;
+        _Global.count++;
         Main_struct(tem,tem->RHS);
     }
     else
@@ -3561,8 +3652,8 @@ void Join_get_info(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -3578,8 +3669,8 @@ void  Enum_get_group_by(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -3594,8 +3685,8 @@ void Enum_get_having(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -3610,8 +3701,8 @@ void Enum_get_oder_by(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -3747,8 +3838,8 @@ void Show_the_filed_info()
     {
         tem_stmt = (select_info*)Vetor_get(_stmt.vector_stmt,i);
         /*这里会默认从主函数开始匹配你输入的字段*/
-        // if(strcmp(tem_stmt->name,"MAIN") == 0)                     
-        // {
+        if(strcmp(tem_stmt->name,"MAIN") == 0)                     
+        {
             for(j=0;j<tem_stmt->vector_field->curr_size;j++)
             {
                 tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
@@ -3772,7 +3863,7 @@ void Show_the_filed_info()
                 }
 
             }
-        // }
+        }
     }
 }
 
@@ -4133,10 +4224,11 @@ int parse_getopt(int argc,char** argv)
                     {"all",0,NULL,'a'},
                     {"physical_mode",0,NULL,'p'},
                     {"file",1,NULL,'f'},
-
+                    {"test",0,NULL,'t'},
+                    {"back",0,NULL,'b'},
             };
 
-    while ((opt = getopt_long(argc,argv,"g:apf:",opt_choose,NULL))!=-1)
+    while ((opt = getopt_long(argc,argv,"g:apf:bt",opt_choose,NULL))!=-1)
     {
         switch (opt)
         {
@@ -4153,6 +4245,12 @@ int parse_getopt(int argc,char** argv)
             case 'f':
                 _Global.mode = ALL_MODE;
                 _Global.file_name = optarg;
+                break;
+            case 't':
+                _Global.mode = TEST_MODE;
+                break;
+            case 'b':
+                _Global.mode = BACK_STMT;
                 break;
             default:
                 usage();
@@ -4178,6 +4276,287 @@ void usage()
 {
     printf("-f  <FILE>              --file       <FILE>                指定读入sql的文件名称\n");
     printf("-p                      --physical                         查看所有的字段和其对应的物理表\n");
-    printf("-a                      --all                              将所有的语句分册显示，对应关系显示\n");
+    printf("-a                      --all                              将所有的语句分层显示，对应关系显示\n");
     printf("-g  <FIELD>             --getinfo    <FIELD>               查找输入字段对应的物理表\n");
 }
+
+/*-------------------------还原语句---------------------------------*/
+
+void Get_back_stmt(stmt* back_stmt)
+{
+    c_vector*           main_select_info = Init_vector(10);
+    c_vector*           union_stmt = Init_vector(10);
+    select_info*        main_select = NULL;
+    int                 i = 0;
+    u_int64_t           stmt_size = 0;
+    char*               stmt_stmt = NULL;
+    char**               tem_stmt = NULL;
+
+    //拿到每一个mian的函数开始
+    Find_main(back_stmt,main_select_info);
+    for(i = 0;i<main_select_info->curr_size;i++)
+    {
+        main_select = Vetor_get(main_select_info,i);
+        stmt_size += Show_select_info(main_select,union_stmt,back_stmt);    //让这个函数返回这个语句的大小
+    }
+
+    if(union_stmt->curr_size < 1)   //容错
+    {
+        return;
+    }
+
+    stmt_stmt = (char*)malloc(stmt_size+7*(union_stmt->curr_size-1)+10);
+    tem_stmt = Vetor_get(union_stmt,0);
+    sprintf(stmt_stmt,"%s",*tem_stmt);
+    for(i = 1;i<union_stmt->curr_size;i++)
+    {
+        tem_stmt = (char**)Vetor_get(union_stmt,i);
+        sprintf(stmt_stmt,"%s UNION %s",stmt_stmt,*tem_stmt);
+    }
+
+    printf("原来的语句 ： %s\n",stmt_stmt);
+}
+
+
+void Find_main(stmt* back_stmt,c_vector* main_select_info)
+{
+    int             i = 0;
+    select_info*    tem_stmt;
+
+    for(i=0;i<back_stmt->vector_stmt->curr_size;i++)
+    {
+        tem_stmt = Vetor_get(back_stmt->vector_stmt,i);
+        if(strcmp(tem_stmt->name,"MAIN") == 0)
+        {
+            Vector_push_back(main_select_info,tem_stmt);
+        }
+    }
+}
+
+
+int Show_select_info(select_info* main_select,c_vector* union_stmt,stmt* back_stmt)
+{
+    u_int64_t       stmt_size = 0;
+    int             i = 0;
+    char*           field = NULL;
+    char*           opt = NULL;
+    char*           table = NULL;
+    char*           where = NULL;
+    char*           group = NULL;
+    char*           having = NULL;
+    char*           order = NULL;
+    char*           stmt = (char*)calloc(1,STMT_MAX);  //默认一条语句最大1M
+    field_info*     tem_field = NULL;
+    obj_info*       tem_obj = NULL;
+    Tree_Node*      tem_node;
+    u_int64_t       tem_size = 0;
+
+    sprintf(stmt,"SELECT");
+    for(i = 0 ;i<main_select->vector_opt->curr_size;i++)
+    {        
+        tem_node = Vetor_get(main_select->vector_opt,i);
+        sprintf(stmt,"%s %s",stmt,tem_node->RHS);
+    }
+
+    if(main_select->vector_field->curr_size>=1)
+    {
+        tem_field = Vetor_get(main_select->vector_field,0);
+     
+        if(tem_field->field_name->type == SELECT_SELECT)
+        {
+            sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_field->field_name->RHS,back_stmt));
+        }
+        else
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_name->RHS);
+        }
+
+        if(tem_field->field_alias != NULL && strcmp(tem_field->field_alias->RHS,"NULL") != 0)
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_alias->RHS);
+        }
+    }
+    for(i = 1 ;i<main_select->vector_field->curr_size;i++)
+    {
+        tem_field = Vetor_get(main_select->vector_field,i);
+
+        if(tem_field->field_name->type == SELECT_SELECT)
+        {
+            sprintf(stmt,"%s , (%s)",stmt,Get_subquery_stmt(tem_field->field_name->RHS,back_stmt));
+        }
+        else
+        {
+            sprintf(stmt,"%s , %s",stmt,tem_field->field_name->RHS);
+        }
+     
+        if(tem_field->field_alias != NULL && strcmp(tem_field->field_alias->RHS,"NULL") != 0)
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_alias->RHS);
+        }
+    }
+
+    sprintf(stmt,"%s FROM",stmt);
+
+    if(main_select->vector_table->curr_size>=1)
+    {
+        tem_obj = Vetor_get(main_select->vector_table,0);
+
+
+        if(tem_obj->obj_condition != NULL && strcmp(tem_obj->obj_condition->RHS,"NULL") != 0)
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s LEFT JOIN (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s LEFT JOIN %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+
+            sprintf(stmt,"%s %s",stmt,tem_obj->obj_condition->RHS);
+        }
+
+        else
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+        }
+        
+    }
+    for(i = 1 ;i<main_select->vector_table->curr_size;i++)
+    {
+        tem_obj = Vetor_get(main_select->vector_table,i);
+
+        if(tem_obj->obj_condition != NULL && strcmp(tem_obj->obj_condition->RHS,"NULL") != 0)
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s LEFT JOIN (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s LEFT JOIN %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+
+            sprintf(stmt,"%s %s",stmt,tem_obj->obj_condition->RHS);
+        }
+
+        else
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+        }
+    }
+
+    for(i = 0 ;i<main_select->vector_where->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_where,i);
+         sprintf(stmt,"%s WHERE %s",stmt,tem_node->RHS);
+    }
+
+    for(i = 0 ;i<main_select->vector_group_by->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_group_by,i);
+         sprintf(stmt,"%s GROUP BY %s",stmt,tem_node->RHS);
+    }
+
+    for(i = 0 ;i<main_select->vector_having->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_having,i);
+         sprintf(stmt,"%s HAVING %s",stmt,tem_node->RHS);
+    }
+    for(i = 0 ;i<main_select->vector_oder_by->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_oder_by,i);
+         sprintf(stmt,"%s ODER　BY %s",stmt,tem_node->RHS);
+    }
+
+
+    Vector_push_back(union_stmt,&stmt);
+    return strlen(stmt);
+}
+
+
+char* Get_subquery_stmt(char* search,stmt* back_stmt)
+{
+    c_vector*           main_select_info = Init_vector(10);
+    c_vector*           union_stmt = Init_vector(10);
+    select_info*        main_select = NULL;
+    int                 i = 0;
+    u_int64_t           stmt_size = 0;
+    char*               stmt_stmt = NULL;
+    char**               tem_stmt = NULL;
+
+    //拿到每一个mian的函数开始
+    Find_sub(back_stmt,main_select_info,search);
+    for(i = 0;i<main_select_info->curr_size;i++)
+    {
+        main_select = Vetor_get(main_select_info,i);
+        stmt_size += Show_select_info(main_select,union_stmt,back_stmt);    //让这个函数返回这个语句的大小
+    }
+
+    if(union_stmt->curr_size < 1)   //容错
+    {
+        return;
+    }
+
+    stmt_stmt = (char*)malloc(stmt_size+7*(union_stmt->curr_size-1)+10);
+    tem_stmt = Vetor_get(union_stmt,0);
+    sprintf(stmt_stmt,"%s",*tem_stmt);
+    for(i = 1;i<union_stmt->curr_size;i++)
+    {
+        tem_stmt = (char**)Vetor_get(union_stmt,i);
+        sprintf(stmt_stmt,"%s UNION %s",stmt_stmt,*tem_stmt);
+    }
+
+    return stmt_stmt;
+}
+
+
+void Find_sub(stmt* back_stmt,c_vector* main_select_info,char* search)
+{
+    int             i = 0;
+    select_info*    tem_stmt;
+
+    for(i=0;i<back_stmt->vector_stmt->curr_size;i++)
+    {
+        tem_stmt = Vetor_get(back_stmt->vector_stmt,i);
+        if(strcmp(tem_stmt->name,search) == 0)
+        {
+            Vector_push_back(main_select_info,tem_stmt);
+        }
+    }
+}
+

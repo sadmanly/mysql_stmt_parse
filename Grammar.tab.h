@@ -85,33 +85,28 @@ extern int yydebug;
     NATURAL = 295,
     EXISTS = 296,
     UNION = 297,
-    INSERT_OBJ = 298,
-    INSERT = 299,
-    UPDATE = 300,
-    CREATE = 301,
-    ID = 302,
-    SET = 303,
-    EOL = 304,
-    LF_bracket = 305,
-    RF_bracket = 306,
-    VALUES = 307,
-    COMMA = 308,
-    DATABASE = 309,
-    AS = 310,
-    NAME = 311,
-    ASC = 312,
-    DESC = 313,
-    INTO = 314,
-    NUM = 315,
-    WITH = 316,
-    ROLLUP = 317,
-    CONCAT = 318,
-    CASE = 319,
-    THEN = 320,
-    WHEN = 321,
-    END = 322,
-    ELSE = 323,
-    FLOOR = 324
+    INSERT = 298,
+    UPDATE = 299,
+    CREATE = 300,
+    ID = 301,
+    SET = 302,
+    VALUES = 303,
+    DATABASE = 304,
+    AS = 305,
+    NAME = 306,
+    ASC = 307,
+    DESC = 308,
+    INTO = 309,
+    NUM = 310,
+    WITH = 311,
+    ROLLUP = 312,
+    CONCAT = 313,
+    CASE = 314,
+    THEN = 315,
+    WHEN = 316,
+    END = 317,
+    ELSE = 318,
+    FLOOR = 319
   };
 #endif
 
@@ -120,12 +115,12 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 117 "Grammar.y" /* yacc.c:1909  */
+#line 148 "Grammar.y" /* yacc.c:1909  */
 
     struct Tree_Node* node;
     char* strval;
 
-#line 129 "Grammar.tab.h" /* yacc.c:1909  */
+#line 124 "Grammar.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

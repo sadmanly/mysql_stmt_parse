@@ -10,11 +10,21 @@ int yydebug = 1;
 int yylineno;
 extern FILE* yyin;
 
+#define STMT_MAX 1024*1024
+
 typedef struct stmt
 {
    int stmt_statment;
    c_vector* vector_stmt;
 }stmt;
+
+typedef struct chache_stmt
+{
+    u_int64_t   now_offset;
+    u_int64_t   size;   
+    char* chache;
+}chache_stmt;
+
 
 typedef struct Global
 {
@@ -24,20 +34,26 @@ typedef struct Global
     char* database_name;
     char* real_field_name;
     char* file_name;
+    
+    int count;
+    Tree_Node* root;                //语句序列的ROOT节点
+    chache_stmt* ptr_chache;
 }Global;
 
 enum
 {
     ALL_MODE,
     GET_MODE,
-    PHYSICAL_MODE
+    PHYSICAL_MODE,
+    TEST_MODE,
+    BACK_STMT
 };
 
 typedef struct select_info
 {
     char name[30];
-    c_vector* vector_field;     //field_info
-    c_vector* vector_opt;      //Node*
+    c_vector* vector_field;         //field_info
+    c_vector* vector_opt;           //Node*
     c_vector* vector_table;
     c_vector* vector_where;
     c_vector* vector_group_by;
@@ -48,12 +64,12 @@ typedef struct select_info
 
 typedef struct obj_info
 {
-    int type;               //用来标记是否为子查询
-    Tree_Node* obj_name;         //记录字段的名字
-    Tree_Node* obj_alias;        //记录字段的别名
-    Tree_Node* obj_condition;    //记录改字段的条件
-    c_vector* obj_field;    //指向同一个SELECT下面可能对应的字段信息
-    Tree_Node* select_select; //记录为子查询的节点
+    int type;                       //用来标记是否为子查询
+    Tree_Node* obj_name;            //记录字段的名字
+    Tree_Node* obj_alias;           //记录字段的别名
+    Tree_Node* obj_condition;       //记录改字段的条件
+    c_vector* obj_field;            //指向同一个SELECT下面可能对应的字段信息
+    Tree_Node* select_select;       //记录为子查询的节点（no use）
 }obj_info;
 
 typedef struct field_info
@@ -67,18 +83,24 @@ typedef struct field_info
     Tree_Node* select_select;
 }field_info;
 
-//全局变量的声明
-int count;
-stmt _stmt;
-Global _Global;
-void usage();
-int parse_getopt(int argc,char** argv);
+typedef struct _String
+{
+    u_int64_t   string_size;
+    char*       string_ptr;
+}_String;
+
+stmt _stmt;                                             //一条语句的所有信息
+Global _Global;                                         //全局使用变量的结构体
+void usage();                                           //提示怎么输入的提示函数
+int parse_getopt(int argc,char** argv);                 //命令行解析函数和
 void Init_stmt_vector();
 void Init_select_info_vector(select_info* select_con);
 void Del_stmt_vector();
 void Del_select_info_vector();
-void Main_struct(Tree_Node* enum_man,char* name);
 
+void Main_mode();
+
+void Main_struct(Tree_Node* enum_man,char* name);
 void Get_select_info(Tree_Node* enum_man,select_info* select_con);
 void Get_opt_info(Tree_Node* enum_man,select_info* select_con);
 void Get_field_info(Tree_Node* enum_man,select_info* select_con);
@@ -111,6 +133,15 @@ void Subquery_get_info(char* search,char* real_field_name,field_info* save_field
 //将字段信息切割 为 database table filed 的格式
 int Str_cut_for_real_alias(char* field_name,char** database_name,char** table_alias_name,char** real_field_name);
 void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info* save_field);
+
+void Get_back_stmt(stmt* back_stmt);
+void Find_main(stmt* back_stmt,c_vector* main_select_info);
+int Show_select_info(select_info* main_select,c_vector* union_stmt,stmt* back_stmt);
+char* Get_subquery_stmt(char* search,stmt* back_stmt);
+void Find_sub(stmt* back_stmt,c_vector* main_select_info,char* search);
+void Init_chache_stmt();
+int Insert_str(char* str);
+void Expend_chache();
 %}
 
 %union
@@ -136,10 +167,9 @@ void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info
 %token BY HAVING WINDOW ORDER LIMIT FOR JOIN INNER CROSS ON USING LEFT RIGHT OUTER 
 %token NATURAL AND OR NOT EXISTS UNION 
  /*声明token*/
-%token INSERT_OBJ
 %token INSERT UPDATE CREATE
 %token ID SET 
-%token EOL LF_bracket RF_bracket VALUES COMMA EQ   
+%token VALUES EQ   
 %token DATABASE 
 %token AS NAME
 %token ASC DESC INTO NUM WITH ROLLUP  
@@ -148,7 +178,7 @@ void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info
  /*函数RHS声明*/
 %type<node> case_when_fun when_then
 %type<strval> NAME NUM EQ
-%type<node> SQLS SQL update_exp create_exp select_exp select_expr_stmt 
+%type<node> SQLS SQL update_exp create_exp select_exp select_expr_stmt insert_exp
 %type<node> select_opts select_expr_list  
 %type<node> select_expr opt_as_alias
 %type<node> table_references table_reference 
@@ -163,52 +193,40 @@ void All_table_this_floor(select_info* tem_stmt,char* real_field_name,field_info
 
 SQLS:SQL ';' 
     {
-        // Delete_tree($1);
-        // Del_select_info_vector();
+        $$ = $1;
+        _Global.root = $$;
     }
     | SQLS  SQL ';' 
-    {
-        // Delete_tree($2);
-        // Del_select_info_vector();
-        // printf("归约成功!\n");
+    {   
+        $$ = $2;
+        $1->R_child = $2;
     }
     ;
 
 SQL: 
-   {
-          $$ = Create_new_node(0,"SELECT T 语句");
-   }
-   | insert_exp {printf("\tstat : insert\n");}
-   | update_exp  {printf("\tstat : update\n");}
-   | create_exp  {printf("\tstat : create\n");}
-   | select_exp  
-                {
-                    Main_struct($1,"MAIN");
-
-                    if(_Global.mode == GET_MODE)
-                    {
-                         Str_cut_for_real_alias(_Global.field_name,&_Global.database_name,&_Global.table_alias_name,&_Global.real_field_name);
-                         Connect_enum_main();
-                         Show_the_filed_info(_Global.field_name);
-                    }
-                    else if(_Global.mode == ALL_MODE)
-                    {
-                        Connect_enum_main();
-                        Show_stmt_info();
-                    }
-                    else if(_Global.mode == PHYSICAL_MODE)
-                    {
-                        Connect_enum_main();
-                        Show_all_physical_table();
-                    }
-                    Delete_tree($1);
-                    Del_select_info_vector();
-                    Del_stmt_vector();
-                    Init_stmt_vector();
-                    printf("\n");
-                    // printf("|-----------------------------------------------------------------|\n");
-                }
-                ;
+    {
+        $$ = Create_new_node(0,"SELECT T 语句");
+    }
+    |   insert_exp 
+    {
+        $$ = Create_new_node(INSERT,"INSERT");
+        $$->L_child = $1; 
+    }
+    |   update_exp  
+    {
+        printf("\tstat : update\n");
+    }
+    |   create_exp  
+    {
+        printf("\tstat : create\n");
+    }
+    |   select_exp  
+    {
+        $$ = Create_new_node(SELECT,"SELECT");
+        $$->L_child = $1;
+        Main_struct($1,"MAIN");
+    }
+    ;
 
 select_exp:select_expr_stmt 
           {
@@ -1202,29 +1220,35 @@ column_list:NAME
            }
            ;
 
-create_exp: CREATE DATABASE ID {}
+create_exp: CREATE DATABASE NAME {}
           ;
-update_exp: UPDATE ID SET ID EQ ID WHERE ID EQ ID {}
-          ;
-
-insert_exp: INSERT INSERT_OBJ ID LF_bracket key_value_exp RF_bracket VALUES LF_bracket value_key_exp RF_bracket {} 
-          | INSERT INSERT_OBJ ID VALUES LF_bracket value_key_exp RF_bracket {}
+update_exp: UPDATE NAME SET NAME EQ NAME WHERE NAME EQ NAME {}
           ;
 
-key_value_exp: ID {}
-             | id_comma_exp ID {}
+insert_exp: INSERT INTO NAME '(' key_value_exp ')' VALUES '(' value_key_exp ')' 
+            {
+                $$ = Create_new_node(INSERT,"insert into name() valuse()");
+            } 
+            | INSERT INTO NAME VALUES '(' value_key_exp ')' 
+            {
+                $$ = Create_new_node(INSERT,"insert into name() valuse()");
+            }
+          ;
+
+key_value_exp: NAME {}
+             | id_comma_exp NAME {}
              ;
 
-id_comma_exp: ID COMMA {}
-            | id_comma_exp ID COMMA {}
+id_comma_exp: NAME ','  {}
+            | id_comma_exp NAME ',' {}
             ;
 
-value_key_exp: ID {}
-             | id2_comma_exp ID {}
+value_key_exp: NAME {}
+             | id2_comma_exp NAME {}
              ; 
 
-id2_comma_exp: ID COMMA {}
-             | id2_comma_exp ID COMMA {}
+id2_comma_exp: NAME ',' {}
+             | id2_comma_exp NAME ',' {}
              ;
 
 
@@ -1242,17 +1266,93 @@ int yyerror(char* a , int state)
 
 int main(int argc, char ** argv)
 {  
-    Init_stmt_vector();
-    parse_getopt(argc,argv);
-    yyparse();
-    Del_stmt_vector();
+    Init_stmt_vector();         //初始化全局变量
+    parse_getopt(argc,argv);    //解析命令行的参数
+    yyparse();                  //解析词法和建立语法树
+    Main_mode();                //具体动作
+    Del_stmt_vector();          //释放掉所有空间
     return 0;
 }
  
+
+void Main_mode()
+{
+    if(_Global.mode == GET_MODE)
+    {
+        Str_cut_for_real_alias(_Global.field_name,&_Global.database_name,&_Global.table_alias_name,&_Global.real_field_name);
+        Connect_enum_main();
+        Show_the_filed_info(_Global.field_name);
+    }
+    else if(_Global.mode == ALL_MODE)
+    {
+        Connect_enum_main();
+        Show_stmt_info();
+    }
+    else if(_Global.mode == PHYSICAL_MODE)
+    {
+        Connect_enum_main();
+        Show_all_physical_table();
+    }
+    else if(_Global.mode == TEST_MODE)
+    {
+        printf("%s",_Global.ptr_chache->chache);
+    }
+    else if(_Global.mode == BACK_STMT)
+    {
+        Connect_enum_main();
+        Get_back_stmt(&_stmt);
+    }
+
+}
+
+
 void Init_stmt_vector()
 {
     _stmt.vector_stmt = Init_vector(10);
-    count=0;
+    _Global.count=0;
+    _Global.ptr_chache = (chache_stmt*)calloc(sizeof(chache_stmt),1);
+    Init_chache_stmt();
+}
+
+void Init_chache_stmt()
+{
+    _Global.ptr_chache->size = STMT_MAX;
+    _Global.ptr_chache->now_offset = 0;
+    _Global.ptr_chache->chache = (char*)calloc(_Global.ptr_chache->size,1);   
+    if(_Global.ptr_chache->chache == NULL)
+    {
+        exit(0);
+    }
+}
+
+int Insert_str(char* str)
+{
+    if( _Global.ptr_chache->now_offset + strlen(str) >= _Global.ptr_chache->size)
+    {
+        Expend_chache();    
+    }
+    memcpy(_Global.ptr_chache->chache + _Global.ptr_chache->now_offset,str,strlen(str));
+    _Global.ptr_chache->now_offset += strlen(str);
+    return _Global.ptr_chache->now_offset;
+}
+
+void Expend_chache()
+{
+    _Global.ptr_chache->chache = (char*)realloc(_Global.ptr_chache->chache,_Global.ptr_chache->size*2);
+    if(_Global.ptr_chache->chache == NULL)
+    {
+        exit(0);
+    }
+}
+
+void Show_string(_String* string)
+{
+    int         i;
+
+    for(i = 0;i<string->string_size;i++)
+    {
+        printf("%c",string->string_ptr[i]);
+    }
 }
 
 void Init_select_info_vector(select_info* select_con)
@@ -1393,9 +1493,9 @@ void Get_field_info_child(Tree_Node* enum_man,select_info* select_con)
     if(tem->type == SELECT_SELECT)
     {
         tem->RHS = (char *)realloc(tem->RHS,strlen(tem->RHS)+30);
-        sprintf(tem->RHS,"%s%d)",tem->RHS,count);
+        sprintf(tem->RHS,"%s%d)",tem->RHS,_Global.count);
         tem_struct->field_name = tem;
-        count++;
+        _Global.count++;
         Main_struct(tem,tem->RHS);
     }
     else
@@ -1462,9 +1562,9 @@ void Normal_get_info(Tree_Node* enum_man,select_info* select_con)
     if(tem->type == SELECT_SELECT)
     {
         tem->RHS = (char *)realloc(tem->RHS,strlen(tem->RHS)+30);
-        sprintf(tem->RHS,"%s%d)",tem->RHS,count);
+        sprintf(tem->RHS,"%s%d)",tem->RHS,_Global.count);
         tem_struct->obj_name = tem;
-        count++;
+        _Global.count++;
         Main_struct(tem,tem->RHS);
     }
     else
@@ -1519,8 +1619,8 @@ void Join_get_info(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -1536,8 +1636,8 @@ void  Enum_get_group_by(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -1552,8 +1652,8 @@ void Enum_get_having(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -1568,8 +1668,8 @@ void Enum_get_oder_by(Tree_Node* enum_man,select_info* select_con)
         if(enum_man->L_child != NULL &&  enum_man->L_child->type == SELECT_SELECT)
         {
             enum_man->L_child->RHS = (char*)realloc(enum_man->L_child->RHS,strlen(enum_man->L_child->RHS)+10);
-            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,count);
-            count++;
+            sprintf(enum_man->L_child->RHS,"%s%d)",enum_man->L_child->RHS,_Global.count);
+            _Global.count++;
             char* tem_name = strchr(enum_man->L_child->RHS,'(');
             Main_struct(enum_man->L_child,tem_name);
         }
@@ -1705,8 +1805,8 @@ void Show_the_filed_info()
     {
         tem_stmt = (select_info*)Vetor_get(_stmt.vector_stmt,i);
         /*这里会默认从主函数开始匹配你输入的字段*/
-        // if(strcmp(tem_stmt->name,"MAIN") == 0)                     
-        // {
+        if(strcmp(tem_stmt->name,"MAIN") == 0)                     
+        {
             for(j=0;j<tem_stmt->vector_field->curr_size;j++)
             {
                 tem_field = (field_info*)Vetor_get(tem_stmt->vector_field,j);
@@ -1730,7 +1830,7 @@ void Show_the_filed_info()
                 }
 
             }
-        // }
+        }
     }
 }
 
@@ -2091,10 +2191,11 @@ int parse_getopt(int argc,char** argv)
                     {"all",0,NULL,'a'},
                     {"physical_mode",0,NULL,'p'},
                     {"file",1,NULL,'f'},
-
+                    {"test",0,NULL,'t'},
+                    {"back",0,NULL,'b'},
             };
 
-    while ((opt = getopt_long(argc,argv,"g:apf:",opt_choose,NULL))!=-1)
+    while ((opt = getopt_long(argc,argv,"g:apf:bt",opt_choose,NULL))!=-1)
     {
         switch (opt)
         {
@@ -2111,6 +2212,12 @@ int parse_getopt(int argc,char** argv)
             case 'f':
                 _Global.mode = ALL_MODE;
                 _Global.file_name = optarg;
+                break;
+            case 't':
+                _Global.mode = TEST_MODE;
+                break;
+            case 'b':
+                _Global.mode = BACK_STMT;
                 break;
             default:
                 usage();
@@ -2136,6 +2243,287 @@ void usage()
 {
     printf("-f  <FILE>              --file       <FILE>                指定读入sql的文件名称\n");
     printf("-p                      --physical                         查看所有的字段和其对应的物理表\n");
-    printf("-a                      --all                              将所有的语句分册显示，对应关系显示\n");
+    printf("-a                      --all                              将所有的语句分层显示，对应关系显示\n");
     printf("-g  <FIELD>             --getinfo    <FIELD>               查找输入字段对应的物理表\n");
 }
+
+/*-------------------------还原语句---------------------------------*/
+
+void Get_back_stmt(stmt* back_stmt)
+{
+    c_vector*           main_select_info = Init_vector(10);
+    c_vector*           union_stmt = Init_vector(10);
+    select_info*        main_select = NULL;
+    int                 i = 0;
+    u_int64_t           stmt_size = 0;
+    char*               stmt_stmt = NULL;
+    char**               tem_stmt = NULL;
+
+    //拿到每一个mian的函数开始
+    Find_main(back_stmt,main_select_info);
+    for(i = 0;i<main_select_info->curr_size;i++)
+    {
+        main_select = Vetor_get(main_select_info,i);
+        stmt_size += Show_select_info(main_select,union_stmt,back_stmt);    //让这个函数返回这个语句的大小
+    }
+
+    if(union_stmt->curr_size < 1)   //容错
+    {
+        return;
+    }
+
+    stmt_stmt = (char*)malloc(stmt_size+7*(union_stmt->curr_size-1)+10);
+    tem_stmt = Vetor_get(union_stmt,0);
+    sprintf(stmt_stmt,"%s",*tem_stmt);
+    for(i = 1;i<union_stmt->curr_size;i++)
+    {
+        tem_stmt = (char**)Vetor_get(union_stmt,i);
+        sprintf(stmt_stmt,"%s UNION %s",stmt_stmt,*tem_stmt);
+    }
+
+    printf("原来的语句 ： %s\n",stmt_stmt);
+}
+
+
+void Find_main(stmt* back_stmt,c_vector* main_select_info)
+{
+    int             i = 0;
+    select_info*    tem_stmt;
+
+    for(i=0;i<back_stmt->vector_stmt->curr_size;i++)
+    {
+        tem_stmt = Vetor_get(back_stmt->vector_stmt,i);
+        if(strcmp(tem_stmt->name,"MAIN") == 0)
+        {
+            Vector_push_back(main_select_info,tem_stmt);
+        }
+    }
+}
+
+
+int Show_select_info(select_info* main_select,c_vector* union_stmt,stmt* back_stmt)
+{
+    u_int64_t       stmt_size = 0;
+    int             i = 0;
+    char*           field = NULL;
+    char*           opt = NULL;
+    char*           table = NULL;
+    char*           where = NULL;
+    char*           group = NULL;
+    char*           having = NULL;
+    char*           order = NULL;
+    char*           stmt = (char*)calloc(1,STMT_MAX);  //默认一条语句最大1M
+    field_info*     tem_field = NULL;
+    obj_info*       tem_obj = NULL;
+    Tree_Node*      tem_node;
+    u_int64_t       tem_size = 0;
+
+    sprintf(stmt,"SELECT");
+    for(i = 0 ;i<main_select->vector_opt->curr_size;i++)
+    {        
+        tem_node = Vetor_get(main_select->vector_opt,i);
+        sprintf(stmt,"%s %s",stmt,tem_node->RHS);
+    }
+
+    if(main_select->vector_field->curr_size>=1)
+    {
+        tem_field = Vetor_get(main_select->vector_field,0);
+     
+        if(tem_field->field_name->type == SELECT_SELECT)
+        {
+            sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_field->field_name->RHS,back_stmt));
+        }
+        else
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_name->RHS);
+        }
+
+        if(tem_field->field_alias != NULL && strcmp(tem_field->field_alias->RHS,"NULL") != 0)
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_alias->RHS);
+        }
+    }
+    for(i = 1 ;i<main_select->vector_field->curr_size;i++)
+    {
+        tem_field = Vetor_get(main_select->vector_field,i);
+
+        if(tem_field->field_name->type == SELECT_SELECT)
+        {
+            sprintf(stmt,"%s , (%s)",stmt,Get_subquery_stmt(tem_field->field_name->RHS,back_stmt));
+        }
+        else
+        {
+            sprintf(stmt,"%s , %s",stmt,tem_field->field_name->RHS);
+        }
+     
+        if(tem_field->field_alias != NULL && strcmp(tem_field->field_alias->RHS,"NULL") != 0)
+        {
+            sprintf(stmt,"%s %s",stmt,tem_field->field_alias->RHS);
+        }
+    }
+
+    sprintf(stmt,"%s FROM",stmt);
+
+    if(main_select->vector_table->curr_size>=1)
+    {
+        tem_obj = Vetor_get(main_select->vector_table,0);
+
+
+        if(tem_obj->obj_condition != NULL && strcmp(tem_obj->obj_condition->RHS,"NULL") != 0)
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s LEFT JOIN (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s LEFT JOIN %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+
+            sprintf(stmt,"%s %s",stmt,tem_obj->obj_condition->RHS);
+        }
+
+        else
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+        }
+        
+    }
+    for(i = 1 ;i<main_select->vector_table->curr_size;i++)
+    {
+        tem_obj = Vetor_get(main_select->vector_table,i);
+
+        if(tem_obj->obj_condition != NULL && strcmp(tem_obj->obj_condition->RHS,"NULL") != 0)
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s LEFT JOIN (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s LEFT JOIN %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+
+            sprintf(stmt,"%s %s",stmt,tem_obj->obj_condition->RHS);
+        }
+
+        else
+        {
+            if(tem_obj->obj_name->type == SELECT_SELECT)
+            {
+                sprintf(stmt,"%s (%s)",stmt,Get_subquery_stmt(tem_obj->obj_name->RHS,back_stmt));
+            }
+            else
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_name->RHS);
+            }
+
+            if(tem_obj->obj_alias != NULL && strcmp(tem_obj->obj_alias->RHS,"NULL") != 0)
+            {
+                sprintf(stmt,"%s %s",stmt,tem_obj->obj_alias->RHS);
+            }
+        }
+    }
+
+    for(i = 0 ;i<main_select->vector_where->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_where,i);
+         sprintf(stmt,"%s WHERE %s",stmt,tem_node->RHS);
+    }
+
+    for(i = 0 ;i<main_select->vector_group_by->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_group_by,i);
+         sprintf(stmt,"%s GROUP BY %s",stmt,tem_node->RHS);
+    }
+
+    for(i = 0 ;i<main_select->vector_having->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_having,i);
+         sprintf(stmt,"%s HAVING %s",stmt,tem_node->RHS);
+    }
+    for(i = 0 ;i<main_select->vector_oder_by->curr_size;i++)
+    {
+         tem_node = Vetor_get(main_select->vector_oder_by,i);
+         sprintf(stmt,"%s ODER　BY %s",stmt,tem_node->RHS);
+    }
+
+
+    Vector_push_back(union_stmt,&stmt);
+    return strlen(stmt);
+}
+
+
+char* Get_subquery_stmt(char* search,stmt* back_stmt)
+{
+    c_vector*           main_select_info = Init_vector(10);
+    c_vector*           union_stmt = Init_vector(10);
+    select_info*        main_select = NULL;
+    int                 i = 0;
+    u_int64_t           stmt_size = 0;
+    char*               stmt_stmt = NULL;
+    char**               tem_stmt = NULL;
+
+    //拿到每一个mian的函数开始
+    Find_sub(back_stmt,main_select_info,search);
+    for(i = 0;i<main_select_info->curr_size;i++)
+    {
+        main_select = Vetor_get(main_select_info,i);
+        stmt_size += Show_select_info(main_select,union_stmt,back_stmt);    //让这个函数返回这个语句的大小
+    }
+
+    if(union_stmt->curr_size < 1)   //容错
+    {
+        return;
+    }
+
+    stmt_stmt = (char*)malloc(stmt_size+7*(union_stmt->curr_size-1)+10);
+    tem_stmt = Vetor_get(union_stmt,0);
+    sprintf(stmt_stmt,"%s",*tem_stmt);
+    for(i = 1;i<union_stmt->curr_size;i++)
+    {
+        tem_stmt = (char**)Vetor_get(union_stmt,i);
+        sprintf(stmt_stmt,"%s UNION %s",stmt_stmt,*tem_stmt);
+    }
+
+    return stmt_stmt;
+}
+
+
+void Find_sub(stmt* back_stmt,c_vector* main_select_info,char* search)
+{
+    int             i = 0;
+    select_info*    tem_stmt;
+
+    for(i=0;i<back_stmt->vector_stmt->curr_size;i++)
+    {
+        tem_stmt = Vetor_get(back_stmt->vector_stmt,i);
+        if(strcmp(tem_stmt->name,search) == 0)
+        {
+            Vector_push_back(main_select_info,tem_stmt);
+        }
+    }
+}
+

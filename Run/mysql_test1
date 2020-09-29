@@ -29,3 +29,4 @@ LEFT JOIN  t1 k
 on t.database_id=t1.database_id and t.rule_type=t1.rule_type and t.rule_id=t1.rule_id
 GROUP BY t.rule_type,t.rule_id
 ORDER BY t.rule_type,t.rule_id;
+
