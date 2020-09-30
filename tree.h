@@ -43,7 +43,7 @@ typedef struct Tree_Node
 {
    char* RHS;
    int type;
-   struct  _String*    data;
+   struct  _String*    data;        
    struct  Tree_Node*  Parent;
    struct  Tree_Node*  L_child;
    struct  Tree_Node*  R_child;
@@ -66,3 +66,5 @@ Tree_Node* Insert_tree_as_R(Tree_Node* parent,int type,char* RHS);
 void Enum_tree_node_deep(Tree_Node* enum_man);
 void Enum_tree(Tree* tem);
 Tree_Node* Create_new_node(int type,char* RHS);
+
+

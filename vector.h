@@ -1,6 +1,8 @@
 //
 // Created by root on 2020/8/31.
 //
+#pragma once
+
 
 #ifndef DATA_STRUCTURE_VECTOR_H
 #define DATA_STRUCTURE_VECTOR_H
